@@ -28,10 +28,18 @@ export function saveCase(c,cases,stamp=new Date().toISOString()){
  const errors=validate(c);if(errors.length) throw new Error(errors.join(' '));
  const old=cases.find(x=>x.id===c.id);
  const event={at:stamp,text:old?'Sak oppdatert · '+c.status:'Henvendelse registrert'};
- const saved={...c,id:old?.id||crypto.randomUUID(),createdAt:old?.createdAt||today(),history:[...(old?.history||[]),event],handoff:old?.handoff||null};
+ const saved={...old,...c,id:old?.id||crypto.randomUUID(),createdAt:old?.createdAt||today(),history:[...(old?.history||[]),event],handoff:old?.handoff||null};
  return old?cases.map(x=>x.id===old.id?saved:x):[saved,...cases];
 }
-export function requestHandoff(c,recipient){if(!OWNERS.includes(recipient)||recipient===c.owner)throw new Error('Velg en annen mottaker.');if(!c.agreementDate)throw new Error('Registrer avtale før oppstartsoverlevering.');return {...c,status:'Oppstartsoverlevering',handoff:{from:c.owner,to:recipient,state:'Venter på bekreftelse'},history:[...c.history,{at:new Date().toISOString(),text:'Overlevering forespurt til '+recipient}]};}
+export function completeFollowup(c,{nextAction,due,actor},stamp=new Date().toISOString()){
+ if(!isActive(c)) throw new Error('Avsluttede saker kan ikke få fullført oppfølging.');
+ if(actor!==c.owner) throw new Error('Bare ansvarlig kan fullføre oppfølgingen.');
+ if(!c.nextAction?.trim()) throw new Error('Saken mangler en handling å fullføre.');
+ if(!nextAction?.trim()||!validDate(due)||due<today()) throw new Error('Avtal neste handling og en frist fra i dag eller senere.');
+ const completed={action:c.nextAction,due:c.due,by:actor,completedAt:stamp};
+ return {...c,nextAction:nextAction.trim(),due,lastContact:stamp.slice(0,10),completedActions:[...(c.completedActions||[]),completed],history:[...c.history,{at:stamp,text:'Fullført: '+c.nextAction+' · Neste: '+nextAction.trim()+' ('+due+')'}]};
+}
+export function requestHandoff(c,recipient){if(!isActive(c))throw new Error('Avsluttede saker kan ikke overleveres.');if(c.handoff?.state==='Venter på bekreftelse')throw new Error('Saken har allerede en ventende overlevering.');if(!OWNERS.includes(recipient)||recipient===c.owner)throw new Error('Velg en annen mottaker.');if(!c.agreementDate)throw new Error('Registrer avtale før oppstartsoverlevering.');return {...c,status:'Oppstartsoverlevering',handoff:{from:c.owner,to:recipient,state:'Venter på bekreftelse'},history:[...c.history,{at:new Date().toISOString(),text:'Overlevering forespurt til '+recipient}]};}
 export function acceptHandoff(c,actor){if(!c.handoff||c.handoff.to!==actor||c.handoff.state!=='Venter på bekreftelse')throw new Error('Bare mottaker kan bekrefte ventende overlevering.');return {...c,owner:actor,handoff:{...c.handoff,state:'Bekreftet'},history:[...c.history,{at:new Date().toISOString(),text:'Overlevering bekreftet av '+actor}]};}
 export function report(cases,from,to){const inPeriod=d=>d&&d>=from&&d<=to;return {new:cases.filter(c=>inPeriod(c.createdAt)),agreements:cases.filter(c=>inPeriod(c.agreementDate)),starts:cases.filter(c=>inPeriod(c.startDate)),followup:cases.filter(c=>needsAction(c,to))};}
 export function seed(){return [
