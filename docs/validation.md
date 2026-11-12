@@ -8,3 +8,8 @@
 
 ## Pilotkontroll som gjenstår
 Åpne desktop og mobil. Registrer, søk, oppdater, pause med årsak, sett avtaledato uten ordningsnummer, be om overlevering og bekreft som mottaker. Kontroller rapportens inkluder­te saker. Test tastatur, leserekkefølge, kontrast, zoom og smal skjerm. Reell tilgangskontroll skal først testes når backend og jobbinnlogging er implementert.
+
+## Bekreftet CI-resultat
+GitHub Actions-kjøring 43311799955 (PR #1, kode 114636c4c06b5674aa6b227379738260280552bb) fullførte nettlesertesten: registrering, obligatoriske felt, søk/ingen treff, redigering, mottaksbekreftet overlevering, bevaring ved gjenlasting, rapporttall, dialog/Escape og mobil uten horisontal side-overflyt. Ingen JavaScript-feil observert. Regeltestene besto også i CI. Lokal blokkering ovenfor ble løst ved å kjøre testen i GitHubs testmiljø. Skjermbilder ble produsert av testen, men manuell visuell gjennomgang gjenstår.
+
+Testkjøring: https://github.com/Javist87/cherry-picker-/actions/runs/43311799955
