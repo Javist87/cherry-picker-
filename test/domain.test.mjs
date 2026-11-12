@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {seed,validate,saveCase,duplicates,report,requestHandoff,acceptHandoff,today,offset,needsAction} from '../domain.mjs';
+const valid=()=>({...seed()[0],id:undefined,email:'unique@example.invalid',name:'Ny test'});
+test('aktive saker krever eier, neste handling og frist',()=>{for(const key of ['owner','nextAction','due'])assert.ok(validate({...valid(),[key]:''}).length);assert.deepEqual(validate(valid()),[]);});
+test('pause og avslutning krever årsak',()=>{for(const status of ['Avventer','Avsluttet'])assert.ok(validate({...valid(),status,reason:''}).length);});
+test('avtale uten ordningsnummer er gyldig; faktisk oppstart er separat',()=>{const c={...valid(),agreementDate:today()};assert.deepEqual(validate(c),[]);assert.equal(report([c],today(),today()).starts.length,0);assert.equal(report([c],today(),today()).agreements.length,1);});
+test('oppstart krever avtale og kan ikke være før avtale eller i fremtiden',()=>{assert.ok(validate({...valid(),startDate:today()}).length);assert.ok(validate({...valid(),agreementDate:today(),startDate:offset(-1)}).length);assert.ok(validate({...valid(),agreementDate:today(),startDate:offset(1)}).length);});
+test('dubletter sammenlignes på normalisert e-post, telefon og navn/kommune',()=>{const cases=seed();assert.equal(duplicates({...valid(),email:' DEMO0@EXAMPLE.INVALID '},cases).length,1);assert.equal(duplicates(cases[0],cases).length,0);assert.equal(duplicates({...valid(),phone:'+47 123 45'},[{...cases[0],phone:'4712345'}]).length,1);});
+test('rapport har inklusiv periode og gir avstembare sakssett',()=>{const cases=seed();const r=report(cases,offset(-6),today());assert.equal(r.new.length,4);assert.equal(r.agreements.length,1);assert.equal(r.starts.length,1);assert.ok(r.followup.every(c=>needsAction(c,today())));});
+test('lagring bevarer historikk og opprettelsesdato',()=>{const original=seed();const result=saveCase({...original[0],nextAction:'Ring igjen'},original);assert.equal(result.length,original.length);assert.equal(result[0].history.length,2);assert.equal(result[0].createdAt,original[0].createdAt);});
+test('mottaker må bekrefte overlevering før ansvar flyttes',()=>{let c={...seed()[2]};assert.throws(()=>requestHandoff(seed()[0],'Selger A'));c=requestHandoff(c,'Selger A');assert.equal(c.owner,'Thomas');assert.throws(()=>acceptHandoff(c,'Selger B'));c=acceptHandoff(c,'Selger A');assert.equal(c.owner,'Selger A');assert.equal(c.handoff.state,'Bekreftet');assert.throws(()=>acceptHandoff(c,'Selger A'));});
+test('ugyldige datoer og ukjente statuser avvises',()=>{assert.ok(validate({...valid(),due:'2026-02-30'}).length);assert.ok(validate({...valid(),status:'Ukjent'}).length);});
