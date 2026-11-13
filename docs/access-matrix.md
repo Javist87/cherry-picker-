@@ -60,6 +60,7 @@ En bruker kan ha flere roller. Effektiv tilgang er summen av rollene, aldri mer.
 | `audit.read` | — | — | — | — | — | alle | — |
 | `admin.config` | — | — | — | — | alle | — | — |
 | `intake.submit` | — | — | — | — | — | — | alle |
+| `directory.read` | avdeling | avdeling | avdeling | — | — | — | — |
 <!-- matrix:end -->
 
 Hva operasjonene dekker:
