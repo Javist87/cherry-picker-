@@ -4,7 +4,9 @@
 // nettverkskall, ingen lagring og ingen reelle data. Formålet er at reglene
 // i dokumentene kan testes (test/contract.test.mjs) før en backend finnes,
 // og at samme tester senere kan rettes mot den faktiske implementasjonen.
-// Filen serveres ikke av server.mjs og brukes ikke av app.mjs.
+// Filen serveres ikke til klienten og brukes ikke av app.mjs. Tabellen MATRIX er eneste kilde
+// for tilgangstabellen og importeres av server/access.mjs. Håndhevelsen i serveren er skrevet
+// separat og sammenlignes med authorize() her i test/api/access-differential.test.mjs.
 
 export const ROLES = ['selger', 'teamleder', 'avdelingsleder', 'leder', 'teknisk_admin', 'revisor', 'inntak'];
 
@@ -24,6 +26,8 @@ export const MATRIX = {
   'audit.read':      { revisor: 'alle' },
   'admin.config':    { teknisk_admin: 'alle' },
   'intake.submit':   { inntak: 'alle' },
+  // Lagt til med serveren: oppslag av kolleger for valg av ansvarlig og mottaker. Forslag, se B-05.
+  'directory.read':  { selger: 'avdeling', teamleder: 'avdeling', avdelingsleder: 'avdeling' },
 };
 
 const isOwner = (u, c) => c.ownerId === u.id;
@@ -54,7 +58,7 @@ function inScope(user, operation, resource) {
   return grants(user, operation).some(scope => SCOPE_TESTS[scope](user, resource));
 }
 
-const COLLECTION_OPERATIONS = new Set(['case.search', 'case.export', 'report.aggregate', 'audit.read', 'admin.config', 'intake.submit']);
+const COLLECTION_OPERATIONS = new Set(['case.search', 'case.export', 'report.aggregate', 'audit.read', 'admin.config', 'intake.submit', 'directory.read']);
 
 // Avgjør om en bruker kan utføre en operasjon.
 // - 401: ingen gyldig sesjon.

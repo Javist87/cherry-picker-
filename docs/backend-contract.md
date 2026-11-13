@@ -1,6 +1,6 @@
-# Backendkontrakt – forslag, ikke implementert
+# Backendkontrakt – forslag, bygget med utviklingsadaptere
 
-Status: forslag til vurdering, 13. november 2026. Det finnes ingen server, database eller innlogging. Dokumentet beskriver hva en backend må oppfylle, uavhengig av leverandør og teknologivalg. Tilgangsregler står i [access-matrix.md](access-matrix.md). Åpne beslutninger har ID-er (B-xx) som viser til registeret i [backlog.md](backlog.md).
+Status: forslag til vurdering, 13. november 2026. Kontrakten er ikke godkjent. Den er bygget i `server/` og testet over HTTP, men bare med utviklingsadaptere for lagring og innlogging. Det finnes ingen database og ingen reell innlogging. Dokumentet beskriver hva en backend må oppfylle, uavhengig av leverandør og teknologivalg. Tilgangsregler står i [access-matrix.md](access-matrix.md). Åpne beslutninger har ID-er (B-xx) som viser til registeret i [backlog.md](backlog.md).
 
 Grunnlag: [architecture.md](architecture.md), CLAUDE.md, issue #2 og reglene i `domain.mjs`. Prosjektbeskrivelsen «Salgsverktøy Medvind 1.0 beta» ligger ikke i repoet og er ikke lest.
 
@@ -8,7 +8,8 @@ Grunnlag: [architecture.md](architecture.md), CLAUDE.md, issue #2 og reglene i `
 |---|---|
 | Datamodell, valideringsregler, API-feil, revisjonskontroll, idempotent inntak | Spesifisert her |
 | Tilgangsregler, revisjonskontroll og idempotens | Kjørbar referansemodell i `contract/reference-model.mjs`, testet med `npm run test:contract` |
-| Server, database, innlogging, revisjonslogg, varsling, eksport | Ikke bygget |
+| API-server med validering, feilformat, revisjonskontroll, inntak, revisjonslogg, eksport og tilgang | Bygget i `server/`, testet med `npm run test:api` mot utviklingsadaptere |
+| Database, reell innlogging (OIDC), varsling, sletting | Ikke bygget. Krever B-01, B-02, B-03, B-10, B-11 |
 
 ## 1. Felles regler
 
@@ -174,12 +175,20 @@ Feil returneres som `application/problem+json` (RFC 9457) med stabil `code`. Kli
 | 401 | `unauthenticated` | Ingen gyldig sesjon |
 | 403 | `forbidden_operation`, `forbidden_scope` | Se tilgangsmatrisen |
 | 404 | `not_found` | Finnes ikke, eller er utenfor innsyn. Likt svar |
-| 409 | `possible_duplicate`, `handoff_pending`, `case_closed`, `agreement_required` | Forespørselen er gyldig, men strider mot sakens tilstand |
+| 403 | `forbidden_origin` | Skrivende kall med `Origin` fra en annen vert |
+| 405 | `method_not_allowed` | Ruten finnes, men ikke med denne metoden |
+| 409 | `possible_duplicate`, `handoff_pending`, `handoff_not_pending`, `case_closed`, `agreement_required`, `action_already_completed` | Forespørselen er gyldig, men strider mot sakens tilstand |
+| 413 | `payload_too_large` | Innhold over 64 kB |
+| 415 | `unsupported_media_type` | Skrivende kall uten `Content-Type: application/json` |
 | 412 | `precondition_failed` | `If-Match` stemmer ikke med gjeldende revisjon |
 | 422 | `validation_failed`, `idempotency_key_reused` | Feltfeil, eller nøkkel gjenbrukt med annet innhold |
 | 428 | `precondition_required` | `If-Match` mangler |
 | 429 | `rate_limited` | For mange forespørsler. `Retry-After` oppgis |
 | 500 | `internal_error` | Uventet feil. Ingen interne detaljer i svaret |
+
+Feltfeil har kodene `required`, `invalid_enum`, `invalid_date`, `invalid_email`, `invalid_type`, `invalid_reference`, `too_long`, `unknown_field`, `read_only`, `past_date`, `future_date`, `date_order`, `open_action_required` og `next_action_required`. Kodene i de tre radene 403 `forbidden_origin`, 405, 413 og 415 samt `handoff_not_pending`, `action_already_completed` og feltkodene utover tabellen i kapittel 3 er lagt til under bygging.
+
+Rekkefølgen på kontrollene er: sesjon (401), tilgang (403 eller 404), `If-Match` (428 eller 412), validering (422), tilstand (409). En bruker uten innsyn får derfor 404 også når `If-Match` mangler.
 
 Feilmeldinger skal ikke inneholde personopplysninger eller opplysninger om andre saker. `requestId` gjør at feilen kan finnes i loggen uten at innholdet gjengis.
 
@@ -199,7 +208,9 @@ Oversikten viser omfanget, ikke endelig utforming.
 
 | Metode og sti | Operasjon | Merknad |
 |---|---|---|
-| `GET /cases` | `case.search` | Søk, filtre, sideinndeling med `cursor`. Bare saker i omfanget |
+| `GET /me` | – | Innlogget bruker, tildelte operasjoner og kodeverk. Krever bare sesjon |
+| `GET /users` | `directory.read` | Kolleger med saksrolle i egne avdelinger, for valg av ansvarlig og mottaker |
+| `GET /cases` | `case.search` | Søk (`q`), filtre (`status`, `bpa`, `source`, `ownerId`), sideinndeling med `limit` og `cursor`. Bare saker i omfanget |
 | `POST /cases` | `case.create` | Oppretter sak med første Action i samme kall |
 | `GET /cases/{id}` | `case.read` | Med Person, kontakter, åpen Action og ventende Handoff |
 | `PATCH /cases/{id}` | `case.update` | Delvis oppdatering. Krever `If-Match` |
@@ -210,10 +221,22 @@ Oversikten viser omfanget, ikke endelig utforming.
 | `GET /cases/{id}/events` | `case.read` | Sakshistorikk |
 | `GET /reports/aggregate` | `report.aggregate` | `from`, `to`, `groupBy`. Bare antall |
 | `POST /exports` | `case.export` | Krever `purpose` |
-| `GET /audit-events` | `audit.read` | |
+| `GET /audit-events` | `audit.read` | Filtre `caseId`, `actorId`, `operation`, `outcome` |
+| `GET /admin/config` | `admin.config` | Teknisk oppsett uten saks- eller persondata. Endring av kodeverk er ikke bygget |
 | `POST /intake/web-form` | `intake.submit` | Se under |
 
-Person, Contact og Relationship opprettes og endres under saken de tilhører, og følger sakens tilgang.
+Person, Contact og Relationship opprettes og endres under saken de tilhører, og følger sakens tilgang. Det finnes ingen ruter som `/persons/{id}` eller `/contacts/{id}`.
+
+Valg gjort under bygging, som må bekreftes:
+
+- `POST /cases` tar `person`, `contact` og `action` som nøstede objekter. Uten `person` brukes saksnavnet. Hver ny sak får egen Person og Contact. Gjenbruk og sammenslåing er ikke bygget.
+- `PATCH /cases/{id}` kan ikke endre `ownerId`. Eier endres bare ved bekreftet overlevering eller eierskifte.
+- Flytting til annet team eller annen avdeling krever at målet er i brukerens omfang for `case.create`.
+- Eier, ansvarlig og mottaker må være ansatt med saksrolle i sakens avdeling (B-08).
+- Ved bekreftet overlevering og ved eierskifte følger åpen handling med når tidligere eier var ansvarlig. Eierskifte trekker ventende overlevering (`cancelled`).
+- Bare teamleder og avdelingsleder kan sende `confirmNotDuplicate: true` (B-09).
+- Aggregater filtreres på opprettelsesdato og returnerer ingen totalsum (B-06).
+- Frist må være i dag eller senere når en handling opprettes eller fristen endres. Uendret, forfalt frist hindrer ikke annen lagring.
 
 ## 7. Idempotent inntak
 
@@ -228,17 +251,19 @@ Gjelder nettskjema og senere prøveimport.
 7. En innsending blir ikke automatisk en sak. Den får tilstand `received`, `possible_duplicate`, `converted`, `rejected` eller `failed`. Ruting til avdeling, team og eier skjer etter regler som må besluttes. Innsendinger som ikke kan rutes eller behandles havner i feilkø med synlig antall og alder.
 8. Endepunktet har ratebegrensning og tjenestekonto med bare `intake.submit`. Tjenestekontoen kan ikke lese saker.
 
-Hvor lenge nøkler oppbevares er ikke besluttet. Det må være lenger enn avsenders lengste gjenforsøk. Punkt 1–6 er verifisert i referansemodellen.
+Hvor lenge nøkler oppbevares er ikke besluttet. Det må være lenger enn avsenders lengste gjenforsøk. Punkt 1–6 og 8 er bygget og testet mot API-et. Av punkt 7 er bare tilstandene `received` og `possible_duplicate` bygget. Ruting, konvertering til sak og feilkø er ikke bygget, og ingen rolle kan i dag lese innsendinger.
 
 ## 8. Hva som ikke er spesifisert
 
-- Autentisering, sesjoner og hvor roller og tilhørighet hentes fra (B-02).
+- Autentisering, sesjoner og hvor roller og tilhørighet hentes fra (B-02). Identitetsporten i `server/ports.mjs` beskriver hva en adapter må levere.
 - Lagringstid, sletting, innsyn for registrerte og oppbevaring av logg (B-10).
 - Påminnelser og varsling (B-11).
 - Historiske rapporter og måltall. Dagens rapport bruker gjeldende status, ikke øyeblikksbilder.
 - Ytelse, sideinndeling i detalj, og drift (sikkerhetskopi, gjenoppretting, overvåking).
-- Flytting av prototypens `app.mjs` til API-et. Det avtales i PR når oppfølgingsflyten er ferdig.
+- Avslag og tilbaketrekking av overlevering (B-08), innsynsuttrekk for registrerte (B-10) og administrasjon av kodeverk.
 
 ## 9. Fra kontrakttest til backendtest
 
-`test/contract.test.mjs` kjører i dag mot referansemodellen. Når en backend finnes, skal de samme tilfellene kjøres mot den over HTTP med testbrukere per rolle. Tilfellene N-19 til N-22 i tilgangsmatrisen kan først testes da. Referansemodellen beviser at reglene henger sammen. Den beviser ikke at en backend følger dem.
+`test/contract.test.mjs` kjører mot referansemodellen. `test/api/` kjører de samme tilfellene og N-19 til N-22 mot API-et over HTTP med testbrukere per rolle (`npm run test:api`, 48 tester). En egen test sammenligner serverens tilgangsavgjørelse med referansemodellen for alle roller, operasjoner og saksforhold.
+
+Testene beviser at API-et følger reglene med utviklingsadaptere. De beviser ikke at en databaseadapter eller en OIDC-adapter gjør det. Når slike adaptere finnes, skal `test/api/` kjøres mot dem i et produksjonslikt miljø før porten kan kvitteres.
