@@ -14,6 +14,7 @@ npm start
 
 ```sh
 npm test
+npm run test:contract
 npm run test:browser
 ```
 
@@ -36,6 +37,6 @@ Data oppbevares i sessionStorage, bare i den aktuelle fanen. Dette er ikke sikke
 
 ## Videre bygging
 
-Se [docs/architecture.md](docs/architecture.md) og [docs/backlog.md](docs/backlog.md). Produksjon krever valgt driftsmiljø og jobbinnlogging, database, tjenstlig tilgang på server, testet rollematrise, revisjonslogg, sikkerhetskopi, lagrings-/sletteplan og godkjent behandlingsgrunnlag. Ingen integrasjoner, utsendelser eller produksjonssetting er aktivert.
+Se [docs/architecture.md](docs/architecture.md) og planen i [docs/backlog.md](docs/backlog.md). Forslag til backend ligger i [docs/backend-contract.md](docs/backend-contract.md) og [docs/access-matrix.md](docs/access-matrix.md). `npm run test:contract` tester forslagets regler mot en referansemodell, ikke mot en faktisk backend. Produksjon krever valgt driftsmiljø og jobbinnlogging, database, tjenstlig tilgang på server, testet rollematrise, revisjonslogg, sikkerhetskopi, lagrings-/sletteplan og godkjent behandlingsgrunnlag. Ingen integrasjoner, utsendelser eller produksjonssetting er aktivert.
 
 Grunnlag: Prosjektbeskrivelse «Salgsverktøy Medvind 1.0 beta», 12. november 2026. Teknologistakken for produksjon er ennå ikke besluttet. Prototypens standardbaserte JS/CSS og utviklingsserver binder ikke neste trinn til en bestemt leverandør.

@@ -11,3 +11,6 @@ Ikke velg en faktisk tenant, opprett databasekonto, sett opp hemmeligheter eller
 
 ## Status ved videreføring
 Beta: registrering, søk, kontaktløp, BPA-prosess, frister, pause, milepæler, simulert bekreftet overlevering og rapport. Neste tillegg registrerer fullført oppfølging med nytt steg og bevarer forrige handling. Klientdata er bare sessionStorage. 12 regeltester består lokalt etter tillegget; sjekk siste CI for nettlesertest. Claude-tilgang og kjøring er ikke bekreftet fra ChatGPT.
+
+## Status for oppgaven over – 13. november 2026
+Levert som forslag: `docs/backend-contract.md`, `docs/access-matrix.md`, `contract/reference-model.mjs` og `test/contract.test.mjs` (`npm run test:contract`). Planen i `docs/backlog.md` er revidert med faser, port før reelle data og beslutningsregister B-01 til B-12. Ingenting er godkjent eller bygget som backend. `app.mjs`, `domain.mjs` og `test/browser.mjs` er ikke endret.

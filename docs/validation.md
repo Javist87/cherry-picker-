@@ -13,3 +13,8 @@
 GitHub Actions-kjøring 43311799955 (PR #1, kode 114636c4c06b5674aa6b227379738260280552bb) fullførte nettlesertesten: registrering, obligatoriske felt, søk/ingen treff, redigering, mottaksbekreftet overlevering, bevaring ved gjenlasting, rapporttall, dialog/Escape og mobil uten horisontal side-overflyt. Ingen JavaScript-feil observert. Regeltestene besto også i CI. Lokal blokkering ovenfor ble løst ved å kjøre testen i GitHubs testmiljø. Skjermbilder ble produsert av testen, men manuell visuell gjennomgang gjenstår.
 
 Testkjøring: https://github.com/Javist87/cherry-picker-/actions/runs/43311799955
+
+## Kontrakt og tilgangsmatrise – 13. november 2026
+- `npm run test:contract`: 20 av 20 tester bestått. Dekker tilgang ved direkte oppslag, søk, endring og eksport, aggregater, revisjonskontroll og idempotent inntak, og at tabellen i docs/access-matrix.md er lik referansemodellen.
+- Testene kjører mot `contract/reference-model.mjs`. Ingen backend finnes, så ingenting er verifisert mot faktisk server, innlogging eller database. N-19 til N-22 i tilgangsmatrisen er ikke testet.
+- `npm test`: 12 av 12 regeltester bestått. `app.mjs`, `domain.mjs` og `test/browser.mjs` er ikke endret. Nettlesertesten er ikke kjørt lokalt i denne leveransen; se CI.

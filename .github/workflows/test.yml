@@ -11,6 +11,7 @@ jobs:
         with:
           node-version: '24'
       - run: npm test
+      - run: npm run test:contract
       - run: npm install --no-save playwright@1.62.1
       - run: npx playwright install --with-deps chromium
       - run: |
