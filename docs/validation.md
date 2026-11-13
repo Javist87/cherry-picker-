@@ -18,3 +18,30 @@ Testkjøring: https://github.com/Javist87/cherry-picker-/actions/runs/4331179995
 - `npm run test:contract`: 20 av 20 tester bestått. Dekker tilgang ved direkte oppslag, søk, endring og eksport, aggregater, revisjonskontroll og idempotent inntak, og at tabellen i docs/access-matrix.md er lik referansemodellen.
 - Testene kjører mot `contract/reference-model.mjs`. Ingen backend finnes, så ingenting er verifisert mot faktisk server, innlogging eller database. N-19 til N-22 i tilgangsmatrisen er ikke testet.
 - `npm test`: 12 av 12 regeltester bestått. `app.mjs`, `domain.mjs` og `test/browser.mjs` er ikke endret. Nettlesertesten er ikke kjørt lokalt i denne leveransen; se CI.
+
+## Server, tilgang og klient mot API – 13. november 2026
+
+Kjørt lokalt med Node.js 22.23.4. Alle tall er fra faktiske kjøringer.
+
+| Kommando | Resultat | Hva den kjører mot |
+|---|---|---|
+| `npm test` | 12 av 12 bestått | Prototypens regler i `domain.mjs` |
+| `npm run test:contract` | 20 av 20 bestått | Referansemodellen |
+| `npm run test:api` | 48 av 48 bestått | API-et over HTTP, med utviklingsadaptere |
+| `npm run test:browser` | Bestått | Frittstående prototype i Chromium. Testfilen er uendret |
+| `npm run test:browser:api` | Bestått | Klienten i API-modus i Chromium |
+
+De 48 API-testene består av N-01 til N-22 (22 tester), de tolv regeltestene speilet mot serveren (12 tester) og 14 tester av feilformat, revisjonskontroll, inntak, ratebegrensning, katalogoppslag, eierskifte, porter og produksjonssperre.
+
+Kontroll av at testene fanger feil: Tilgangskontrollen ble midlertidig svekket to ganger (teamomfang satt til alltid sant, og sesjonskravet slått av). Testene feilet begge ganger (7 og 2 feil), og koden ble satt tilbake.
+
+Søk i repoet etter hemmeligheter og reelle data: ingen funn. Alle e-postadresser bruker `example.invalid`, alle navn er «Eksempel…» eller «Test…», og `.env` er utelukket i `.gitignore`.
+
+### Ikke verifisert
+
+- Ingenting er kjørt mot reell database, reell innlogging eller et produksjonslikt miljø. N-20 og N-21 er derfor bare vist for lagring i minnet og testinnlogging.
+- Svartid i N-02 er ikke målt. Like svar er kontrollert for status, innhold og headere.
+- Ytelse, samtidige brukere i større omfang og flere serverinstanser er ikke testet.
+- Manuell visuell gjennomgang, skjermleser, kontrast og zoom er ikke gjort. Skjermbildene fra nettlesertesten i API-modus er sett på for PC og mobil.
+- Sikkerhetskopi, gjenoppretting og sletting finnes ikke og er ikke testet.
+- CI-resultatet for denne leveransen må leses av i PR-en.

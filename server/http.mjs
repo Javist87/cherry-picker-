@@ -96,7 +96,9 @@ export function createApp({ service, identity, config, clock, staticHandler = nu
       if (unsafe) {
         // Vern mot forfalskede forespørsler på tvers av nettsteder når sesjonen ligger i informasjonskapsel.
         const origin = req.headers.origin;
-        if (origin && new URL(origin).host !== req.headers.host) throw new ApiError(403, 'forbidden_origin');
+        let originHost = null;
+        try { originHost = origin ? new URL(origin).host : null; } catch { originHost = ''; }
+        if (origin && originHost !== req.headers.host) throw new ApiError(403, 'forbidden_origin');
         if (!(req.headers['content-type'] || '').toLowerCase().startsWith('application/json')) throw new ApiError(415, 'unsupported_media_type');
       }
       if (route.operation === 'intake.submit') {
@@ -110,7 +112,8 @@ export function createApp({ service, identity, config, clock, staticHandler = nu
       }
       const params = {};
       const match = route.pattern.exec(path);
-      route.names.forEach((name, i) => { params[name] = decodeURIComponent(match[i + 1]); });
+      try { route.names.forEach((name, i) => { params[name] = decodeURIComponent(match[i + 1]); }); }
+      catch { throw new ApiError(404, 'not_found'); }
       const query = {};
       for (const [key, value] of url.searchParams) query[key] = value;
       const result = await route.handler({ ctx, params, query, body, headers: req.headers, ifMatch: req.headers['if-match'] });

@@ -5,16 +5,26 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['22', '24']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: ${{ matrix.node-version }}
       - run: npm test
       - run: npm run test:contract
+      - run: npm run test:api
       - run: npm install --no-save playwright@1.62.1
       - run: npx playwright install --with-deps chromium
-      - run: |
+      - name: Nettlesertest, frittstående prototype
+        run: |
           npm start > /tmp/cherry-picker-server.log 2>&1 &
           node -e "const check=async()=>{for(let i=0;i<50;i++){try{if((await fetch('http://127.0.0.1:3000')).ok)return;}catch{}await new Promise(r=>setTimeout(r,100));}process.exit(1)};check()"
           npm run test:browser
+      - name: Nettlesertest, API-modus med utviklingsadaptere
+        run: |
+          PORT=3001 REQUEST_LOG=off npm run start:api > /tmp/cherry-picker-api.log 2>&1 &
+          node -e "const check=async()=>{for(let i=0;i<50;i++){try{if((await fetch('http://127.0.0.1:3001')).ok)return;}catch{}await new Promise(r=>setTimeout(r,100));}process.exit(1)};check()"
+          BASE_URL=http://127.0.0.1:3001 npm run test:browser:api

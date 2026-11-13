@@ -1,6 +1,6 @@
-# Tilgangsmatrise – forslag, ikke implementert
+# Tilgangsmatrise – forslag, bygget med utviklingsadaptere
 
-Status: forslag til vurdering, 13. november 2026. Ingen del av dette er bygget. Prototypens «Test som» er fortsatt bare en demonstrasjon. Rollenavn, omfang og enkeltceller må godkjennes før bygging, se beslutning B-05, B-06 og B-12 i [backlog.md](backlog.md).
+Status: forslag til vurdering, 13. november 2026. Matrisen er ikke godkjent. Den håndheves i `server/access.mjs` og er testet mot API-et over HTTP, men bare med testinnlogging og lagring i minnet. Prototypens «Test som» og serverens testinnlogging er ikke sikkerhet. Rollenavn, omfang og enkeltceller må godkjennes, se beslutning B-05, B-06 og B-12 i [backlog.md](backlog.md).
 
 Grunnlag: [architecture.md](architecture.md), CLAUDE.md og issue #2. Prosjektbeskrivelsen «Salgsverktøy Medvind 1.0 beta» ligger ikke i repoet og er ikke lest. Rollene under er derfor utledet av arkitekturnotatet og må avstemmes mot faktisk organisering.
 
@@ -70,6 +70,7 @@ Hva operasjonene dekker:
 - `case.reassign` er eierskifte uten mottaksbekreftelse, for eksempel ved fravær. Det er holdt adskilt fra overlevering, som krever bekreftelse.
 - `report.aggregate` gir antall per gruppe. Se regler under.
 - `admin.config` gir ikke adgang til å tildele seg selv saksroller, se beslutning B-12.
+- `directory.read` gir navn, avdeling og team for kolleger med saksrolle i egne avdelinger. Raden er lagt til under bygging, fordi klienten må kunne vise mulige ansvarlige og mottakere. Den gir ikke saks- eller personinnsyn.
 
 ## Svar ved avslag
 
@@ -97,32 +98,32 @@ Kjent svakhet: undertrykte celler kan regnes ut hvis totalsum eller overlappende
 
 ## Negative tester
 
-Testene under skal bestå før pilot med reelle data. Kolonnen «Dekket nå» viser hva som i dag er verifisert mot referansemodellen i `test/contract.test.mjs`. Ingen av dem er verifisert mot en faktisk backend, fordi den ikke finnes.
+Testene under skal bestå mot et produksjonslikt miljø før pilot med reelle data. «Referansemodell» er `test/contract.test.mjs`. «API» er `test/api/access.test.mjs`, som kjører over HTTP mot serveren med utviklingsadaptere og testbrukere per rolle. Ingen av testene er kjørt mot reell database eller reell innlogging.
 
-| ID | Type | Forventet resultat | Dekket nå |
-|---|---|---|---|
-| N-01 | Direkte oppslag | Selger får 404 på kollegas sak i samme team, sak i annet team og sak i annen avdeling. | Ja |
-| N-02 | Direkte oppslag | Svar utenfor innsyn er identisk med svar for sak som ikke finnes. | Ja, i modellen. Svartid og headere må testes mot backend. |
-| N-03 | Direkte oppslag | Teamleder får 404 utenfor team. Avdelingsleder får 404 utenfor avdeling. | Ja |
-| N-04 | Søk | Treff og totalantall inneholder bare saker i omfanget, også ved søk på eksakt navn. | Ja |
-| N-05 | Søk | Teknisk administrator, leder, revisor og inntakstjeneste får 403 på søk. | Ja |
-| N-06 | Endring | Selger får 404 ved endring av sak selgeren ikke eier. | Ja |
-| N-07 | Endring | Ventende mottaker får 403 ved endring før bekreftelse. | Ja |
-| N-08 | Endring | Bare ansvarlig kan fullføre åpen handling. Bare mottaker kan bekrefte overlevering. | Ja |
-| N-09 | Endring | Selger kan ikke gjennomføre eierskifte. | Ja |
-| N-10 | Endring | Opprettelse i annet team eller annen avdeling gir 403. | Ja |
-| N-11 | Endring | Tidligere eier mister tilgang etter bekreftet overlevering. | Ja |
-| N-12 | Eksport | Selger og teamleder får 403. Avdelingsleder får bare egen avdeling. | Ja |
-| N-13 | Eksport | Eksport uten formål avvises med 422. | Ja |
-| N-14 | Teknisk administrator | 403 på oppslag, søk, endring, eksport, aggregater og revisjonslogg. | Ja |
-| N-15 | Leder | 403 på enkeltsaker, søk og eksport. Aggregatsvar inneholder ingen identiteter. | Ja |
-| N-16 | Aggregater | Små grupper undertrykkes. Gruppering på navn eller ansvarlig avvises. | Ja |
-| N-17 | Uten rolle | Bruker uten rolle får 403 på alle operasjoner. Uten sesjon gir 401. | Ja |
-| N-18 | Flere roller | Kombinasjon av roller gir ikke tilgang utover summen. | Ja |
-| N-19 | Underressurser | Person, Contact, Relationship, Action og Handoff kan ikke hentes via egen ID uten innsyn i tilhørende sak. | Nei, krever backend |
-| N-20 | Revisjonslogg | Hvert avslag og hver eksport gir AuditEvent. Loggen kan ikke endres eller slettes via API. | Nei, krever backend |
-| N-21 | Sesjon | Endret rolle eller tilhørighet får virkning uten ny innlogging innen avtalt tid. Utløpt sesjon gir 401. | Nei, krever valgt identitetsløsning |
-| N-22 | Dublett | Dublettsvar avslører ikke opplysninger om saker utenfor omfanget. | Nei, krever beslutning B-09 |
+| ID | Type | Forventet resultat | Referansemodell | API med utviklingsadaptere | Forbehold |
+|---|---|---|---|---|---|
+| N-01 | Direkte oppslag | Selger får 404 på kollegas sak i samme team, sak i annet team og sak i annen avdeling. | Ja | Ja |  |
+| N-02 | Direkte oppslag | Svar utenfor innsyn er identisk med svar for sak som ikke finnes. | Ja | Ja | Status, innhold og headere er like. Svartid er ikke målt. |
+| N-03 | Direkte oppslag | Teamleder får 404 utenfor team. Avdelingsleder får 404 utenfor avdeling. | Ja | Ja |  |
+| N-04 | Søk | Treff og totalantall inneholder bare saker i omfanget, også ved søk på eksakt navn. | Ja | Ja |  |
+| N-05 | Søk | Teknisk administrator, leder, revisor og inntakstjeneste får 403 på søk. | Ja | Ja |  |
+| N-06 | Endring | Selger får 404 ved endring av sak selgeren ikke eier. | Ja | Ja |  |
+| N-07 | Endring | Ventende mottaker får 403 ved endring før bekreftelse. | Ja | Ja |  |
+| N-08 | Endring | Bare ansvarlig kan fullføre åpen handling. Bare mottaker kan bekrefte overlevering. | Ja | Ja |  |
+| N-09 | Endring | Selger kan ikke gjennomføre eierskifte. | Ja | Ja | Heller ikke ved å sende `ownerId` i PATCH. |
+| N-10 | Endring | Opprettelse i annet team eller annen avdeling gir 403. | Ja | Ja | Gjelder også flytting med PATCH. |
+| N-11 | Endring | Tidligere eier mister tilgang etter bekreftet overlevering. | Ja | Ja |  |
+| N-12 | Eksport | Selger og teamleder får 403. Avdelingsleder får bare egen avdeling. | Ja | Ja |  |
+| N-13 | Eksport | Eksport uten formål avvises med 422. | Ja | Ja |  |
+| N-14 | Teknisk administrator | 403 på oppslag, søk, endring, eksport, aggregater og revisjonslogg. | Ja | Ja |  |
+| N-15 | Leder | 403 på enkeltsaker, søk og eksport. Aggregatsvar inneholder ingen identiteter. | Ja | Ja |  |
+| N-16 | Aggregater | Små grupper undertrykkes. Gruppering på navn eller ansvarlig avvises. | Ja | Ja | Utregning ved overlappende perioder er ikke løst (B-06). |
+| N-17 | Uten rolle | Bruker uten rolle får 403 på alle operasjoner. Uten sesjon gir 401. | Ja | Ja |  |
+| N-18 | Flere roller | Kombinasjon av roller gir ikke tilgang utover summen. | Ja | Ja |  |
+| N-19 | Underressurser | Person, Contact, Relationship, Action og Handoff kan ikke hentes via egen ID uten innsyn i tilhørende sak. | Nei | Ja | Det finnes ingen ruter for underressurser utenom saken. |
+| N-20 | Revisjonslogg | Hvert avslag og hver eksport gir AuditEvent. Loggen kan ikke endres eller slettes via API. | Nei | Ja | Testet mot lagring i minnet. Varig lagring og databaserettigheter gjenstår (B-03). |
+| N-21 | Sesjon | Endret rolle eller tilhørighet får virkning uten ny innlogging innen avtalt tid. Utløpt sesjon gir 401. | Nei | Ja | Bare mot testinnlogging, der endring virker umiddelbart. Må kjøres på nytt mot valgt identitetsløsning (B-02). |
+| N-22 | Dublett | Dublettsvar avslører ikke opplysninger om saker utenfor omfanget. | Nei | Ja | Svaret sier at det finnes et mulig treff utenfor omfanget. Om det er akseptabelt må besluttes (B-09). |
 
 ## Åpne spørsmål i matrisen
 

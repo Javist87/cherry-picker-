@@ -43,6 +43,9 @@ test('ugyldig JSON, feil innholdstype, ukjent rute og feil metode gir 400, 415, 
 test('forespørsel fra annen opprinnelse avvises for skrivende kall', async () => {
   const res = await t.as(U.selgerA).post('/cases', caseBody(t, U.selgerA), { headers: { Origin: 'https://annet-nettsted.example' } });
   assert.deepEqual([res.status, res.body.code], [403, 'forbidden_origin']);
+  assert.equal((await t.as(U.selgerA).post('/cases', caseBody(t, U.selgerA), { headers: { Origin: 'null' } })).status, 403);
+  assert.equal((await t.as(U.selgerA).post('/cases', caseBody(t, U.selgerA), { headers: { Origin: t.url } })).status, 201);
+  assert.equal((await t.as(U.selgerA).get('/cases/%E0%A4%A')).status, 404);
 });
 
 test('samtidige endringer: If-Match er påkrevd, * godtas ikke, og utdatert revisjon gir 412 uten endring', async () => {
