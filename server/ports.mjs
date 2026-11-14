@@ -35,7 +35,7 @@
 // En OIDC-adapter (for eksempel mot Entra ID) er IKKE skrevet. Den må gjøre autorisasjonskodeflyt
 // med PKCE, validere ID-token (utsteder, mottaker, signatur, utløp, nonce), holde sesjonen på server
 // med HttpOnly-informasjonskapsel, og avbilde grupper til roller, avdeling og team.
-export const COLLECTIONS = ['persons', 'contacts', 'relationships', 'cases', 'actions', 'handoffs', 'intakeSubmissions'];
+export const COLLECTIONS = ['persons', 'contacts', 'relationships', 'cases', 'actions', 'handoffs', 'activities', 'intakeSubmissions'];
 
 export class RepositoryConflict extends Error {
   constructor(message = 'Revisjonskonflikt') { super(message); this.name = 'RepositoryConflict'; }

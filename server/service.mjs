@@ -17,7 +17,7 @@ const normText = value => (value || '').trim().toLowerCase();
 const normPhone = value => (value || '').replace(/\D/g, '');
 const blank = value => value === undefined || value === null || value === '';
 
-const CASE_TEXT_FIELDS = ['name', 'municipality', 'department', 'team', 'ownerId', 'status', 'bpa', 'source', 'reason', 'agreementDate', 'startDate'];
+const CASE_TEXT_FIELDS = ['name', 'municipality', 'department', 'team', 'ownerId', 'status', 'bpa', 'source', 'reason', 'closeOutcome', 'agreementDate', 'startDate'];
 const NESTED = { person: ['displayName'], contact: ['displayName', 'email', 'phone', 'role'], action: ['description', 'assigneeId', 'dueDate'] };
 const AGGREGATE_DIMENSIONS = ['status', 'bpa', 'source', 'municipality', 'department', 'team'];
 const INTAKE_FIELDS = ['name', 'email', 'phone', 'municipality'];
@@ -38,6 +38,7 @@ const MESSAGES = {
   past_date: 'Fristen må være i dag eller senere.',
   future_date: 'Faktisk oppstart kan ikke ligge i fremtiden.',
   date_order: 'Oppstart krever avtaledato og kan ikke være før avtalen.',
+  not_applicable: 'Utfall kan bare settes når saken er avsluttet.',
 };
 const fieldError = (field, code, message) => ({ field, code, message: message || MESSAGES[code] || code });
 
@@ -110,6 +111,10 @@ export function createService({ repository, directory, clock, config }) {
     if (['on_hold', 'closed'].includes(state.status) && blank(state.reason)) {
       errors.push(fieldError('reason', 'required', state.status === 'on_hold' ? 'Oppgi årsak til pause. Fristen er dato for ny vurdering.' : 'Oppgi årsak til avslutning.'));
     }
+    if (!blank(state.closeOutcome)) {
+      if (!CODEBOOK.closeOutcome.includes(state.closeOutcome)) errors.push(fieldError('closeOutcome', 'invalid_enum'));
+      else if (state.status !== 'closed') errors.push(fieldError('closeOutcome', 'not_applicable'));
+    }
     for (const key of ['agreementDate', 'startDate']) if (!blank(state[key]) && !validDate(state[key])) errors.push(fieldError(key, 'invalid_date'));
     if (!blank(state.startDate) && validDate(state.startDate)) {
       if (blank(state.agreementDate)) errors.push(fieldError('startDate', 'date_order', 'Registrer avtaledato før faktisk oppstart.'));
@@ -153,7 +158,8 @@ export function createService({ repository, directory, clock, config }) {
     }
     const actions = await tx.list('actions', { caseId: c.id });
     const handoffs = (await tx.list('handoffs', { caseId: c.id })).sort((a, b) => a.requestedAt.localeCompare(b.requestedAt));
-    const view = { ...c };
+    const activities = (await tx.list('activities', { caseId: c.id })).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+    const view = { closeOutcome: '', ...c };
     for (const key of HIDDEN_CASE_FIELDS) delete view[key];
     return {
       ...view,
@@ -163,6 +169,7 @@ export function createService({ repository, directory, clock, config }) {
       completedActions: actions.filter(a => a.completedAt).sort((a, b) => a.completedAt.localeCompare(b.completedAt)),
       pendingHandoff: handoffs.find(h => h.state === 'pending') || null,
       lastHandoff: handoffs.at(-1) || null,
+      activities: activities.map(a => ({ id: a.id, type: a.type, outcome: a.outcome, note: a.note, at: a.createdAt, by: a.createdBy })),
     };
   }
 
@@ -230,7 +237,7 @@ export function createService({ repository, directory, clock, config }) {
       const state = {
         name: f.name, municipality: f.municipality, department: f.department, team: f.team,
         ownerId: f.ownerId || '', status, bpa: f.bpa || 'unclear', source: f.source,
-        reason: f.reason || '', agreementDate: f.agreementDate || '', startDate: f.startDate || '',
+        reason: f.reason || '', closeOutcome: f.closeOutcome || '', agreementDate: f.agreementDate || '', startDate: f.startDate || '',
         person: input.person ? { displayName: input.person.displayName } : null, // uten oppgitt person brukes saksnavnet
         contact: input.contact && Object.values(input.contact).some(v => !blank(v)) ? { role: 'other', ...input.contact } : null,
         action: status === 'closed' ? null : (input.action ? { assigneeId: f.ownerId || '', ...input.action } : null),
@@ -253,7 +260,7 @@ export function createService({ repository, directory, clock, config }) {
         const c = {
           ...base(ctx), name: state.name, nameNormalized: normText(state.name), municipality: state.municipality, municipalityNormalized: normText(state.municipality),
           personId: person.id, primaryContactId: contact?.id || null, department: state.department, team: state.team,
-          ownerId: state.ownerId || null, status, bpa: state.bpa, source: state.source, reason: state.reason,
+          ownerId: state.ownerId || null, status, bpa: state.bpa, source: state.source, reason: state.reason, closeOutcome: state.closeOutcome,
           agreementDate: state.agreementDate || null, startDate: state.startDate || null,
           closedAt: status === 'closed' ? nowIso() : null, openActionAssigneeId: null, pendingHandoffToId: null,
         };
@@ -282,6 +289,8 @@ export function createService({ repository, directory, clock, config }) {
         const state = {
           name: merged('name'), municipality: merged('municipality'), department: merged('department'), team: merged('team'),
           ownerId: c.ownerId || '', status, bpa: merged('bpa'), source: merged('source'), reason: merged('reason'),
+          // Utfallet hører til avslutningen og nullstilles når saken åpnes igjen.
+          closeOutcome: status !== 'closed' && !('closeOutcome' in f) ? '' : merged('closeOutcome'),
           agreementDate: merged('agreementDate'), startDate: merged('startDate'),
           person: input.person && 'displayName' in input.person ? { displayName: input.person.displayName } : null,
           contact: contactTouched ? { displayName: primary?.displayName || '', email: primary?.email || '', phone: primary?.phone || '', role: primary?.role || 'other', ...input.contact } : (primary ? { ...primary } : null),
@@ -300,7 +309,7 @@ export function createService({ repository, directory, clock, config }) {
 
         const changed = [];
         const next = { ...c };
-        for (const key of ['name', 'municipality', 'department', 'team', 'status', 'bpa', 'source', 'reason']) if (state[key] !== (c[key] ?? '')) { next[key] = state[key]; changed.push(key); }
+        for (const key of ['name', 'municipality', 'department', 'team', 'status', 'bpa', 'source', 'reason', 'closeOutcome']) if (state[key] !== (c[key] ?? '')) { next[key] = state[key]; changed.push(key); }
         for (const key of ['agreementDate', 'startDate']) if ((state[key] || null) !== c[key]) { next[key] = state[key] || null; changed.push(key); }
         next.nameNormalized = normText(next.name); next.municipalityNormalized = normText(next.municipality);
 
@@ -376,6 +385,29 @@ export function createService({ repository, directory, clock, config }) {
         const saved = bump({ ...c, openActionAssigneeId: assigneeId });
         await tx.replace('cases', saved);
         await audit(tx, ctx, { operation: 'action.complete', entityType: 'action', entityId: action.id, caseId: c.id, changedFields: ['action'] });
+        return { body: await caseView(tx, saved), etag: etag(saved) };
+      });
+    },
+
+    // Aktivitetslogg: gjennomført kontakt eller notat på saken. Bare tillegg, ingen endring eller sletting.
+    // Notatteksten lagres på saken, men aldri i revisjonsloggen (B-10).
+    async logActivity(ctx, caseId, ifMatch, body) {
+      return run(async tx => {
+        const c = await loadActiveCase(tx, ctx, 'activity.create', caseId);
+        checkIfMatch(ifMatch, c);
+        const errors = [];
+        const input = readObject(body, ['type', 'outcome', 'note'], '', errors);
+        if (!CODEBOOK.activityType.includes(input.type)) errors.push(fieldError('type', blank(input.type) ? 'required' : 'invalid_enum'));
+        else if (input.type === 'note') {
+          if (blank(input.note)) errors.push(fieldError('note', 'required'));
+          if (!blank(input.outcome)) errors.push(fieldError('outcome', 'not_applicable', 'Notat har ikke utfall.'));
+        } else if (!CODEBOOK.activityOutcome.includes(input.outcome)) errors.push(fieldError('outcome', blank(input.outcome) ? 'required' : 'invalid_enum'));
+        if (errors.length) throw validationError(errors);
+        const activity = { ...base(ctx), caseId: c.id, type: input.type, outcome: input.outcome || '', note: input.note || '' };
+        await tx.insert('activities', activity);
+        const saved = bump(c);
+        await tx.replace('cases', saved);
+        await audit(tx, ctx, { operation: 'activity.create', entityType: 'activity', entityId: activity.id, caseId: c.id, changedFields: ['activity'], details: { type: activity.type } });
         return { body: await caseView(tx, saved), etag: etag(saved) };
       });
     },

@@ -9,6 +9,7 @@ Revidert 13. november 2026, sist etter at server og klient ble bygget med utvikl
 - API-server etter kontrakten er bygget bak porter for lagring og identitet, med utviklingsadaptere (minne og testinnlogging). N-01 til N-22 består mot API-et. Klienten kan kjøre mot API-et uten nettleserlagring.
 - Ingen database, ingen reell innlogging og ingen reelle data. Produksjonsprofilen starter ikke.
 - Ingen av beslutningene B-01 til B-12 er tatt, og ingen eier er satt. Beslutningsgrunnlag med anbefalinger ligger i [decision-brief.md](decision-brief.md).
+- CRM-tillegg er lagt inn 14. november 2026: aktivitetslogg, stillstandsvarsel, smarte lister, utfall ved avslutning og salgstrakt. Sammenligning med andre CRM-systemer og åpne spørsmål Å-1 til Å-6 står i [crm-features.md](crm-features.md). Tilleggene endrer ikke porten eller beslutningene.
 - Status mot porten og driftsdokumentasjon ligger i [operations.md](operations.md).
 
 ## Kritisk linje
@@ -83,7 +84,7 @@ Ingen reelle personopplysninger legges inn før alle punktene er oppfylt og kvit
 - [ ] Behov for personvernkonsekvensvurdering er vurdert, og vurderingen er gjennomført om den kreves (B-04).
 - [ ] Driftsmiljø er godkjent, og databehandleravtaler er på plass (B-01).
 - [ ] Jobbinnlogging er i bruk. «Test som» er fjernet fra produksjonsbygget (B-02).
-- [ ] Negative tilgangstester N-01 til N-22 består mot produksjonslikt miljø.
+- [ ] Negative tilgangstester N-01 til N-23 består mot produksjonslikt miljø.
 - [ ] Revisjonslogg er på og kan ikke endres via applikasjonen.
 - [ ] Sikkerhetskopi er gjenopprettet i test.
 - [ ] Lagringstid og sletting er besluttet og testet (B-10).
@@ -120,6 +121,7 @@ Ingen beslutningseier er registrert i repoet. Kolonnen viser en foreslått rolle
 | R-06 | Prototypen tas i bruk med reelle data fordi den «virker» | Porten over. Advarsel i README beholdes til porten er passert |
 | R-07 | API-serveren med utviklingsadaptere eksponeres eller brukes med reelle data. Testinnloggingen har ikke passord, og data ligger ukryptert i minnet | Serveren binder bare til localhost utenfor produksjonsprofil. Utviklingsadaptere er sperret i produksjonsprofil. Advarsel ved oppstart og i klienten |
 | R-08 | Grønne tester leses som at løsningen er godkjent. Testene er kjørt mot utviklingsadaptere, ikke mot reell database og innlogging | Forbehold står i README, validation.md og tilgangsmatrisen. Porten krever kjøring i produksjonslikt miljø |
+| R-10 | Fritekstnotat i aktivitetsloggen brukes til helseopplysninger | Advarsel i feltet og maks 200 tegn. Notatet logges ikke i revisjonsloggen. Feltet kan fjernes uten å endre resten. Avgjøres under B-04, se Å-1 i [crm-features.md](crm-features.md) |
 | R-09 | Valg gjort under bygging (mottaker i samme avdeling, hvem som kan bekrefte «ikke dublett», katalogoppslag) blir stående uten beslutning | Valgene er listet i kontraktens kapittel 6 og knyttet til B-05, B-08 og B-09 |
 
 ## Utenfor beta

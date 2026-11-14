@@ -45,3 +45,28 @@ Søk i repoet etter hemmeligheter og reelle data: ingen funn. Alle e-postadresse
 - Manuell visuell gjennomgang, skjermleser, kontrast og zoom er ikke gjort. Skjermbildene fra nettlesertesten i API-modus er sett på for PC og mobil.
 - Sikkerhetskopi, gjenoppretting og sletting finnes ikke og er ikke testet.
 - CI-resultatet for denne leveransen må leses av i PR-en.
+
+## CRM-tillegg – 14. november 2026
+
+Kjørt lokalt med Node.js 22.23.4 og Chromium. Alle tall er fra faktiske kjøringer.
+
+| Kommando | Resultat | Hva den kjører mot |
+|---|---|---|
+| `npm test` | 12 av 12 bestått | `domain.mjs`, uendret |
+| `npm run test:crm` | 10 av 10 bestått | Reglene i `crm.mjs` |
+| `npm run test:contract` | 20 av 20 bestått | Referansemodellen, med ny rad `activity.create` |
+| `npm run test:api` | 57 av 57 bestått | API-et over HTTP, med utviklingsadaptere. 9 nye tester i `test/api/activities.test.mjs` |
+| `npm run test:browser` | Bestått | Frittstående prototype. Testfilen er uendret |
+| `npm run test:browser:crm` | Bestått | CRM-tilleggene i prototypen |
+| `npm run test:browser:api` | Bestått | API-modus, utvidet med aktivitetslogg og smart liste |
+
+Kontroll av at N-23 fanger feil: omfanget for `activity.create` ble midlertidig utvidet fra `eier` til `tildelt`. Testen feilet, og koden ble satt tilbake.
+
+Skjermbilder av liste, sakskort og rapport fra nettlesertesten er sett på for PC.
+
+### Ikke verifisert
+
+- Ingenting er kjørt mot reell database, reell innlogging eller et produksjonslikt miljø.
+- Mobilvisning er bare kontrollert for horisontal overflyt, ikke sett på manuelt. Skjermleser, kontrast og zoom er ikke testet.
+- Kodeverk, terskel på 14 dager og definisjonen av konvertering er ikke gjennomgått med salgsteamet.
+- CI-resultatet for denne leveransen må leses av i PR-en.

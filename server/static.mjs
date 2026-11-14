@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const root = new URL('../', import.meta.url);
 const FILES = new Map([
-  ['/', 'index.html'], ['/index.html', 'index.html'], ['/app.mjs', 'app.mjs'], ['/domain.mjs', 'domain.mjs'], ['/style.css', 'style.css'],
+  ['/', 'index.html'], ['/index.html', 'index.html'], ['/app.mjs', 'app.mjs'], ['/domain.mjs', 'domain.mjs'], ['/crm.mjs', 'crm.mjs'], ['/style.css', 'style.css'],
   ['/client/datasource.mjs', 'client/datasource.mjs'], ['/client/local-source.mjs', 'client/local-source.mjs'], ['/client/api-source.mjs', 'client/api-source.mjs'],
 ]);
 const TYPES = { html: 'text/html; charset=utf-8', mjs: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8' };
