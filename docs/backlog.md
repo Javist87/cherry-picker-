@@ -120,6 +120,7 @@ Ingen beslutningseier er registrert i repoet. Kolonnen viser en foreslått rolle
 | R-06 | Prototypen tas i bruk med reelle data fordi den «virker» | Porten over. Advarsel i README beholdes til porten er passert |
 | R-07 | API-serveren med utviklingsadaptere eksponeres eller brukes med reelle data. Testinnloggingen har ikke passord, og data ligger ukryptert i minnet | Serveren binder bare til localhost utenfor produksjonsprofil. Utviklingsadaptere er sperret i produksjonsprofil. Advarsel ved oppstart og i klienten |
 | R-08 | Grønne tester leses som at løsningen er godkjent. Testene er kjørt mot utviklingsadaptere, ikke mot reell database og innlogging | Forbehold står i README, validation.md og tilgangsmatrisen. Porten krever kjøring i produksjonslikt miljø |
+| R-10 | Demoens «superbruker» med alle roller oppfattes som en rolle løsningen skal ha. Den kombinerer teknisk administrator med saksinnsyn, som B-12 foreslår å forby | Brukeren finnes bare i utviklingsadapteren og er merket «kun demo». Avklares i B-12 |
 | R-09 | Valg gjort under bygging (mottaker i samme avdeling, hvem som kan bekrefte «ikke dublett», katalogoppslag) blir stående uten beslutning | Valgene er listet i kontraktens kapittel 6 og knyttet til B-05, B-08 og B-09 |
 
 ## Utenfor beta

@@ -74,6 +74,8 @@ export function createDevMemoryRepository({ profile } = {}) {
   return {
     kind: 'dev-memory',
     devOnly: true,
+    // Tømmer alt. Brukes bare til å nullstille demodata i utviklingsprofil.
+    dev: { reset() { queue = queue.then(() => { state = emptyState(); }); return queue; } },
     // Transaksjoner kjøres én om gangen på en kopi. Kopien tas i bruk bare hvis fn fullfører.
     transaction(fn) {
       const run = queue.then(async () => {

@@ -6,17 +6,21 @@ import { randomBytes } from 'node:crypto';
 const user = (id, displayName, roles, departments = [], teams = []) => ({ id, displayName, roles, departments, teams });
 
 // Fiktive testbrukere, én eller flere per rolle. Ingen av dem er personer.
+// Rekkefølgen er den som vises i velgeren: superbruker og leder først, deretter nedover.
+// «Superbruker» har alle personroller samtidig og finnes bare for demonstrasjon. Om en slik
+// kombinasjon skal være tillatt i drift er ikke besluttet (B-12).
 export const DEV_USERS = [
+  user('00000000-0000-4000-8000-00000000000d', 'Test Superbruker (alle roller, kun demo)', ['selger', 'teamleder', 'avdelingsleder', 'leder', 'teknisk_admin', 'revisor'], ['trondelag', 'vestland'], ['trondelag-1', 'trondelag-2', 'vestland-1']),
+  user('00000000-0000-4000-8000-000000000008', 'Test Leder', ['leder']),
+  user('00000000-0000-4000-8000-000000000006', 'Test Avdelingsleder Trøndelag', ['avdelingsleder'], ['trondelag']),
+  user('00000000-0000-4000-8000-000000000007', 'Test Avdelingsleder Vestland', ['avdelingsleder'], ['vestland']),
+  user('00000000-0000-4000-8000-000000000005', 'Test Teamleder T1', ['teamleder'], ['trondelag'], ['trondelag-1']),
   user('00000000-0000-4000-8000-000000000001', 'Test Selger A', ['selger'], ['trondelag'], ['trondelag-1']),
   user('00000000-0000-4000-8000-000000000002', 'Test Selger B', ['selger'], ['trondelag'], ['trondelag-1']),
   user('00000000-0000-4000-8000-000000000003', 'Test Selger C', ['selger'], ['trondelag'], ['trondelag-2']),
   user('00000000-0000-4000-8000-000000000004', 'Test Selger V', ['selger'], ['vestland'], ['vestland-1']),
-  user('00000000-0000-4000-8000-000000000005', 'Test Teamleder T1', ['teamleder'], ['trondelag'], ['trondelag-1']),
-  user('00000000-0000-4000-8000-000000000006', 'Test Avdelingsleder Trøndelag', ['avdelingsleder'], ['trondelag']),
-  user('00000000-0000-4000-8000-000000000007', 'Test Avdelingsleder Vestland', ['avdelingsleder'], ['vestland']),
-  user('00000000-0000-4000-8000-000000000008', 'Test Leder', ['leder']),
-  user('00000000-0000-4000-8000-000000000009', 'Test Teknisk administrator', ['teknisk_admin']),
   user('00000000-0000-4000-8000-00000000000a', 'Test Revisor', ['revisor']),
+  user('00000000-0000-4000-8000-000000000009', 'Test Teknisk administrator', ['teknisk_admin']),
   user('00000000-0000-4000-8000-00000000000b', 'Tjenestekonto inntak (test)', ['inntak']),
   user('00000000-0000-4000-8000-00000000000c', 'Test Uten rolle', []),
 ];

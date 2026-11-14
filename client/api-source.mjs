@@ -7,35 +7,35 @@ const LABELS = {
   source: { website: 'Nettside', email: 'E-post', phone: 'Telefon', fair: 'Messe', referral: 'Anbefaling' },
   handoff: { pending: 'Venter på bekreftelse', confirmed: 'Bekreftet', cancelled: 'Trukket', declined: 'Avslått' },
 };
-const FIELD_LABELS = { name: 'Saksnavn', municipality: 'Kommune', department: 'Avdeling', team: 'Team', ownerId: 'Ansvarlig', status: 'Kontaktløp', bpa: 'BPA-prosess', source: 'Kilde', reason: 'Årsak', agreementDate: 'Avtale inngått', startDate: 'Faktisk oppstart', 'action.dueDate': 'Frist', 'action.assigneeId': 'Ansvarlig for handling', 'contact.email': 'E-post', 'contact.displayName': 'Kontaktperson', toUserId: 'Mottaker', next: 'Neste steg' };
+const FIELD_LABELS = { name: 'Saksnavn', municipality: 'Kommune', department: 'Avdeling', team: 'Team', ownerId: 'Ansvarlig', status: 'Kontaktløp', bpa: 'BPA-prosess', source: 'Kilde', reason: 'Årsak', agreementDate: 'Avtale inngått', startDate: 'Faktisk oppstart', 'action.dueDate': 'Frist', 'action.assigneeId': 'Ansvarlig for handling', 'contact.email': 'E-post', 'contact.displayName': 'Kontaktperson', toUserId: 'Mottaker', next: 'Neste steg', purpose: 'Formål' };
 const EVENT_TEXT = { 'case.create': 'Henvendelse registrert', 'case.update': 'Sak oppdatert', 'action.complete': 'Oppfølging fullført, nytt steg avtalt', 'handoff.request': 'Overlevering forespurt', 'handoff.confirm': 'Overlevering bekreftet', 'case.reassign': 'Eierskifte gjennomført' };
 const code = (kind, label) => Object.entries(LABELS[kind]).find(([, text]) => text === label)?.[0] ?? label;
 const osloDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Oslo' });
 
 class ApiProblem extends Error {
-  constructor(status, problem) { super(describe(status, problem)); this.status = status; this.code = problem?.code; }
+  constructor(status, problem) { super(describe(status, problem)); this.status = status; this.code = problem?.code; this.mayConfirm = problem?.mayConfirm === true; }
 }
 function describe(status, p) {
   if (!p) return 'Serveren svarte ikke som forventet (' + status + ').';
   if (p.code === 'validation_failed') return (p.errors || []).map(e => (FIELD_LABELS[e.field] ? FIELD_LABELS[e.field] + ': ' : '') + e.message).join(' ');
   if (p.code === 'possible_duplicate') {
     const names = (p.matches || []).map(m => m.name).join(', ');
-    return 'Mulig dublett' + (names ? ': ' + names + '.' : '.') + (p.outsideScope ? ' Det finnes et mulig treff utenfor ditt omfang.' : '') + ' Kontroller eksisterende sak, eller be teamleder vurdere saken.';
+    return 'Mulig dublett' + (names ? ': ' + names + '.' : '.') + (p.outsideScope ? ' Det finnes et mulig treff utenfor ditt omfang.' : '') + (p.mayConfirm ? ' Kontroller eksisterende sak. Du kan bekrefte nedenfor at dette ikke er en dublett.' : ' Kontroller eksisterende sak, eller be teamleder vurdere saken.');
   }
-  if (p.code === 'precondition_failed') return 'Saken er endret av andre siden du åpnet den. Åpne saken på nytt og kontroller før du lagrer.';
+  if (p.code === 'precondition_failed') return 'Saken er endret av andre siden du åpnet den. Ingenting er lagret. Lukk dialogen og åpne saken på nytt for å se gjeldende versjon.';
   if (p.code === 'unauthenticated') return 'Sesjonen er utløpt. Last siden på nytt.';
   return p.title || 'Forespørselen ble avvist.';
 }
 
-async function call(method, path, { body, ifMatch, base = API } = {}) {
+async function call(method, path, { body, ifMatch, base = API, headers = {}, raw = false } = {}) {
   const response = await fetch(base + path, {
     method, credentials: 'same-origin', cache: 'no-store',
-    headers: { Accept: 'application/json', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(ifMatch ? { 'If-Match': ifMatch } : {}) },
+    headers: { Accept: 'application/json', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(ifMatch ? { 'If-Match': ifMatch } : {}), ...headers },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   let json = null; try { json = await response.json(); } catch { /* tomt svar */ }
   if (!response.ok) throw new ApiProblem(response.status, json);
-  return json;
+  return raw ? { status: response.status, body: json, headers: response.headers } : json;
 }
 
 // Fra API-ets normaliserte sak til det flate sakskortet arbeidsflaten viser.
@@ -79,7 +79,8 @@ export function createApiSource() {
       return {
         actor: me.user.id, users, actors: actors.length ? actors : [{ id: me.user.id, name: me.user.displayName }],
         org: { departments: me.codebook.departments, defaults: { department: me.user.departments[0] || '', team: me.user.teams[0] || '' } },
-        caps: { cases: can('case.search'), create: can('case.create'), aggregate: can('report.aggregate') },
+        caps: { cases: can('case.search'), create: can('case.create'), aggregate: can('report.aggregate'), reassign: can('case.reassign'), export: can('case.export'), audit: can('audit.read'), admin: can('admin.config'), intake: can('intake.submit'), reset: me.profile === 'development' && me.identityKind === 'dev' },
+        profile: { name: me.user.displayName, roles: me.user.roles, departments: me.user.departments, teams: me.user.teams, access: me.access },
         texts: {
           saved: 'Saken er lagret på serveren.',
           handoffSent: 'Overlevering sendt. Ansvar flyttes når mottaker bekrefter.',
@@ -117,15 +118,32 @@ export function createApiSource() {
       };
       if (d.contact || d.email || d.phone || existing?.contact) body.contact = { displayName: d.contact || 'Ikke oppgitt', email: d.email || '', phone: d.phone || '' };
       if (body.status !== 'closed') body.action = { description: d.nextAction || '', dueDate: d.due || '' };
-      if (existing) await call('PATCH', '/cases/' + d.id, { body, ifMatch: existing._etag });
+      if (d.confirmNotDuplicate) body.confirmNotDuplicate = true;
+      // If-Match er revisjonen dialogen ble åpnet med. En nyere revisjon fra listen brukes aldri,
+      // ellers ville et nytt forsøk etter 412 overskrive andres endringer med utdaterte felt.
+      if (existing) await call('PATCH', '/cases/' + d.id, { body, ifMatch: d.etag || existing._etag });
       else await call('POST', '/cases', { body: { ...body, ownerId: d.owner } });
     },
-    async completeFollowup(id, { nextAction, due }) {
+    async completeFollowup(id, { nextAction, due, etag }) {
       const c = find(id);
-      await call('POST', `/cases/${id}/actions/${c._actionId}/complete`, { body: { next: { description: nextAction, dueDate: due } }, ifMatch: c._etag });
+      await call('POST', `/cases/${id}/actions/${c._actionId}/complete`, { body: { next: { description: nextAction, dueDate: due } }, ifMatch: etag || c._etag });
     },
-    async requestHandoff(id, recipient) { await call('POST', `/cases/${id}/handoffs`, { body: { toUserId: recipient }, ifMatch: find(id)._etag }); },
-    async acceptHandoff(id) { const c = find(id); await call('POST', `/cases/${id}/handoffs/${c._handoffId}/confirm`, { body: {}, ifMatch: c._etag }); },
+    async requestHandoff(id, recipient, etag) { await call('POST', `/cases/${id}/handoffs`, { body: { toUserId: recipient }, ifMatch: etag || find(id)._etag }); },
+    async acceptHandoff(id, etag) { const c = find(id); await call('POST', `/cases/${id}/handoffs/${c._handoffId}/confirm`, { body: {}, ifMatch: etag || c._etag }); },
+    async reassign(id, { toUserId, reason, etag }) { await call('POST', `/cases/${id}/reassign`, { body: { toUserId, reason }, ifMatch: etag || find(id)._etag }); },
+    async exportCases(purpose) { return call('POST', '/exports', { body: { purpose } }); },
+    async auditEvents({ outcome } = {}) {
+      const filter = outcome ? '&outcome=' + encodeURIComponent(outcome) : '';
+      const { total } = await call('GET', '/audit-events?limit=1' + filter);
+      const page = await call('GET', `/audit-events?limit=200&cursor=${Math.max(0, total - 200)}` + filter);
+      return { total, items: page.items.reverse().map(e => ({ ...e, actorName: names.get(e.actorId) || (e.actorId ? 'Annen bruker' : 'Uten sesjon') })) };
+    },
+    async adminConfig() { return call('GET', '/admin/config'); },
+    async submitIntake(payload, key) {
+      const result = await call('POST', '/intake/web-form', { body: payload, headers: { 'Idempotency-Key': key }, raw: true });
+      return { status: result.status, submissionId: result.body.submissionId, replayed: result.headers.get('idempotent-replayed') === 'true' };
+    },
+    async resetDemo() { await call('POST', '/dev/reset', { base: '.', body: {} }); },
     async aggregate({ groupBy, from, to }) {
       const params = new URLSearchParams({ groupBy }); if (from) params.set('from', from); if (to) params.set('to', to);
       const result = await call('GET', '/reports/aggregate?' + params);

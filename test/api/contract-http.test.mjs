@@ -204,3 +204,28 @@ test('testbrukere finnes for hver rolle, og lagringsadapteren ruller tilbake ved
   await assert.rejects(repo.transaction(tx => tx.replace('persons', { ...doc, revision: 3 })), /Revisjonskonflikt/);
   await assert.rejects(repo.transaction(tx => tx.get('ukjent', doc.id)), /Ukjent samling/);
 });
+
+test('egen tilgang og teknisk oppsett: omfang per operasjon, og inntakskø bare som antall', async () => {
+  const me = await t.as(U.teamlederT1).get('/me');
+  const access = Object.fromEntries(me.body.access.map(a => [a.operation, a.scopes]));
+  assert.deepEqual(access['case.update'], ['team']);
+  assert.deepEqual(access['case.export'], []);
+  assert.deepEqual(access['audit.read'], []);
+  await intake({ name: 'Eksempel Kø', email: 'ko@example.invalid' }, key(900));
+  const config = await t.as(U.admin).get('/admin/config');
+  assert.ok(config.body.intakeQueue.received.count >= 1);
+  assert.ok(config.body.intakeQueue.received.oldestReceivedAt);
+  assert.doesNotMatch(config.text, /Eksempel Kø|ko@example\.invalid/);
+});
+
+test('demobruker med alle personroller får summen av rollene, men ikke inntak', async () => {
+  const superbruker = DEV_USERS[0];
+  assert.match(superbruker.displayName, /Superbruker/);
+  assert.deepEqual([...superbruker.roles].sort(), ROLES.filter(r => r !== 'inntak').sort());
+  t.identity.dev.setUser(superbruker);
+  const s = t.as(superbruker);
+  const sak = await createCase(t, U.selgerV);
+  for (const path of ['/cases/' + sak.id, '/cases', '/reports/aggregate?groupBy=status', '/audit-events?limit=1', '/admin/config', '/users']) assert.equal((await s.get(path)).status, 200, path);
+  assert.equal((await s.post('/exports', { purpose: 'Demo' })).status, 200);
+  assert.equal((await s.post('/intake/web-form', { name: 'Eksempel', email: 'x@example.invalid' }, { headers: { 'Idempotency-Key': key(901) } })).status, 403);
+});

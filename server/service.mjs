@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { ApiError, validationError } from './errors.mjs';
 import { CODEBOOK, CASE_ROLES, departmentOf, teamBelongs } from './codebook.mjs';
 import { today as todayOf, validDate, dateInOslo } from './clock.mjs';
-import { requireAccess, scopesFor, scopeClauses, inScope, grantedOperations } from './access.mjs';
+import { requireAccess, scopesFor, scopeClauses, inScope, grantedOperations, OPERATIONS } from './access.mjs';
 import { RepositoryConflict } from './ports.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -212,7 +212,12 @@ export function createService({ repository, directory, clock, config }) {
     },
 
     async me(ctx) {
-      return { user: ctx.principal, operations: grantedOperations(ctx.principal), codebook: CODEBOOK, identityKind: config.identityKind, today: today() };
+      return {
+        user: ctx.principal, operations: grantedOperations(ctx.principal),
+        // Omfang per operasjon, til visning av egne tilganger. Avgjørelsen tas uansett på server ved hvert kall.
+        access: OPERATIONS.map(operation => ({ operation, scopes: scopesFor(ctx.principal, operation) })),
+        codebook: CODEBOOK, identityKind: config.identityKind, profile: config.profile, today: today(),
+      };
     },
 
     // Ansatte med saksrolle i egne avdelinger. Brukes til valg av ansvarlig og mottaker.
@@ -512,7 +517,14 @@ export function createService({ repository, directory, clock, config }) {
       requireAccess(ctx.principal, 'admin.config');
       return run(async tx => {
         await audit(tx, ctx, { operation: 'admin.config' });
-        return { body: { profile: config.profile, adapters: { repository: repository.kind, identity: config.identityKind }, settings: { aggregateMinCell: config.aggregateMinCell, sessionTtlSeconds: config.sessionTtlSeconds, intakeRateLimitPerMinute: config.intakeRateLimitPerMinute }, codebook: CODEBOOK } };
+        // Inntakskø vises bare som antall og alder, uten innhold (kontraktens kapittel 7, punkt 7).
+        const submissions = await tx.list('intakeSubmissions');
+        const intakeQueue = {};
+        for (const s of submissions) {
+          const entry = intakeQueue[s.state] || (intakeQueue[s.state] = { count: 0, oldestReceivedAt: s.receivedAt });
+          entry.count += 1; if (s.receivedAt < entry.oldestReceivedAt) entry.oldestReceivedAt = s.receivedAt;
+        }
+        return { body: { intakeQueue, profile: config.profile, adapters: { repository: repository.kind, identity: config.identityKind }, settings: { aggregateMinCell: config.aggregateMinCell, sessionTtlSeconds: config.sessionTtlSeconds, intakeRateLimitPerMinute: config.intakeRateLimitPerMinute }, codebook: CODEBOOK } };
       });
     },
 

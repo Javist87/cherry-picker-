@@ -45,3 +45,17 @@ Søk i repoet etter hemmeligheter og reelle data: ingen funn. Alle e-postadresse
 - Manuell visuell gjennomgang, skjermleser, kontrast og zoom er ikke gjort. Skjermbildene fra nettlesertesten i API-modus er sett på for PC og mobil.
 - Sikkerhetskopi, gjenoppretting og sletting finnes ikke og er ikke testet.
 - CI-resultatet for denne leveransen må leses av i PR-en.
+
+## Demoversjon med alle roller – 14. november 2026
+
+| Kommando | Resultat |
+|---|---|
+| `npm test` | 12 av 12 bestått |
+| `npm run test:contract` | 20 av 20 bestått |
+| `npm run test:api` | 50 av 50 bestått |
+| `npm run test:browser` | Bestått, testfilen uendret |
+| `npm run test:browser:api` | Bestått. Går gjennom superbruker, leder, avdelingsleder, teamleder, selgere, revisor, teknisk administrator og inntakstjeneste |
+
+Rettet etter automatisk gjennomgang av forrige leveranse: En dialog som fikk 412 kunne lagres ved nytt forsøk og overskrive andres endringer med utdaterte felt. Dialogen bruker nå revisjonen den ble åpnet med, og må åpnes på nytt. Nettlesertesten dekker tilfellet med to forsøk.
+
+Ikke verifisert: det samme som i forrige avsnitt. I tillegg er de nye visningene bare kontrollert automatisk og på ett skjermbilde, ikke manuelt på mobil eller med skjermleser.

@@ -1,12 +1,13 @@
 {
   "name": "medvind-cherry-picker",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "engines": { "node": ">=22" },
   "scripts": {
     "start": "node server.mjs",
     "start:api": "node server/main.mjs",
+    "demo": "node server/main.mjs",
     "test": "node --test test/domain.test.mjs",
     "test:contract": "node --test test/contract.test.mjs",
     "test:api": "node --test test/api/*.test.mjs",
