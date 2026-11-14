@@ -21,6 +21,8 @@ export const MATRIX = {
   'handoff.request': { selger: 'eier', teamleder: 'team', avdelingsleder: 'avdeling' },
   'handoff.confirm': { selger: 'mottaker', teamleder: 'mottaker', avdelingsleder: 'mottaker' },
   'case.reassign':   { teamleder: 'team', avdelingsleder: 'avdeling' },
+  // Lagt til med aktivitetsloggen. Samme omfang som case.update: ventende mottaker kan ikke logge. Forslag, se B-05.
+  'activity.create': { selger: 'eier', teamleder: 'team', avdelingsleder: 'avdeling' },
   'case.export':     { avdelingsleder: 'avdeling' },
   'report.aggregate': { teamleder: 'team', avdelingsleder: 'avdeling', leder: 'alle' },
   'audit.read':      { revisor: 'alle' },

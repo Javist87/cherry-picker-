@@ -35,7 +35,13 @@ try{
  await open();assert.equal(await page.locator('[name=owner] option:checked').innerText(),'Test Selger B');assert.ok(await page.locator('[name=owner]').isDisabled());
  await page.locator('#followup-action').fill('Send avtalt oppsummering');await page.getByRole('button',{name:'Fullfør og avtal neste steg',exact:true}).click();await saved();
  await open();assert.equal(await page.locator('[name=nextAction]').inputValue(),'Send avtalt oppsummering');assert.match(await page.locator('#history').innerText(),/Oppfølging fullført/);assert.match(await page.locator('#history').innerText(),/Overlevering bekreftet · Test Selger B/);
- const caseId=await page.evaluate(()=>document.querySelector('tbody [data-open]').dataset.open);await page.getByRole('button',{name:'Avbryt',exact:true}).click();
+ const caseId=await page.evaluate(()=>document.querySelector('tbody [data-open]').dataset.open);
+ // Aktivitetslogg lagres på server. Tidligere eier (Selger A) er nå uten innsyn, se tilgangsdelen under.
+ await page.locator('#activity-outcome').selectOption('Ikke svar');await page.locator('#activity-note').fill('Fiktivt: prøver igjen');await page.getByRole('button',{name:'Logg aktivitet',exact:true}).click();await saved();
+ assert.match(await page.locator('#message').innerText(),/Aktiviteten er logget/);
+ await open();assert.match(await page.locator('.activity .history').innerText(),/Telefon · Ikke svar · Test Selger B/);assert.match(await page.locator('#history').innerText(),/Aktivitet logget · Test Selger B/);
+ await page.getByRole('button',{name:'Avbryt',exact:true}).click();
+ await page.locator('.chip',{hasText:'Mine aktive'}).click();assert.equal(await page.locator('tbody tr').count(),1);await page.locator('.chip',{hasText:'Alle'}).click();
 
  // Gjenlasting: data kommer fra server, og ingenting ligger i nettleserlagring
  await page.reload();await page.locator('.stats').waitFor();await page.getByRole('button',{name:'Saker og leads'}).click();await page.locator('#search').fill('Nettlesertest API');assert.equal(await page.locator('tbody tr').count(),1);

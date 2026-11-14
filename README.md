@@ -21,10 +21,12 @@ API-serveren nekter å starte med `APP_PROFILE=production`. Det finnes ingen ada
 
 ```sh
 npm test                  # 12 regeltester for prototypen (domain.mjs)
+npm run test:crm          # 10 regeltester for CRM-tilleggene (crm.mjs)
 npm run test:contract     # 20 kontrakttester mot referansemodellen
-npm run test:api          # 48 tester mot API-et over HTTP, blant dem N-01 til N-22
-npm run test:all          # de tre over
+npm run test:api          # 57 tester mot API-et over HTTP, blant dem N-01 til N-23
+npm run test:all          # de fire over
 npm run test:browser      # nettlesertest av prototypen, krever npm start
+npm run test:browser:crm  # nettlesertest av CRM-tilleggene, krever npm start
 npm run test:browser:api  # nettlesertest i API-modus, krever npm run start:api
 ```
 
@@ -33,6 +35,8 @@ Nettlesertestene krever Playwright 1.62.1 og Chromium. Installer med `npm instal
 ## Hva som finnes
 
 **Prototype (uendret arbeidsflyt):** Arbeidsdag med forfalte og kommende oppfølginger. Registrering og redigering. Søk og filtre, kontaktløp og BPA-prosess. Aktive saker krever ansvarlig, neste handling og frist. Dublettvarsel. Pause og avslutning med årsak. Avtaledato og separat oppstart. Overlevering med mottaksbekreftelse. Fullført oppfølging med nytt steg. Rapport. Mobil og PC, native skjema og dialog med tastaturstøtte.
+
+**CRM-tillegg (14. november 2026):** Aktivitetslogg på sakskortet. Varsel om saker uten aktivitet på 14 dager. Smarte lister og sortering. Utfall ved avslutning. Salgstrakt med konvertering per kilde. Lenker for å ringe og skrive e-post. Virker i begge datakilder. Sammenligning med Lime, Salesforce og Pipedrive, og hva som bør komme senere, står i [docs/crm-features.md](docs/crm-features.md). Kodeverk og terskler er forslag.
 
 **API-server (`server/`):** Bygget etter [docs/backend-contract.md](docs/backend-contract.md) og [docs/access-matrix.md](docs/access-matrix.md).
 
@@ -46,7 +50,7 @@ Nettlesertestene krever Playwright 1.62.1 og Chromium. Installer med `npm instal
 ## Begrensninger
 
 - Utviklingsadapterne er ikke sikkerhet. Testinnloggingen har ikke passord, og lagringen er prosessminnet.
-- N-01 til N-22 er grønne mot API-et med utviklingsadaptere. De er ikke kjørt mot en reell database eller identitetsløsning, og svartid i N-02 er ikke målt.
+- N-01 til N-23 er grønne mot API-et med utviklingsadaptere. De er ikke kjørt mot en reell database eller identitetsløsning, og svartid i N-02 er ikke målt.
 - Kontrakten og matrisen er fortsatt forslag og er ikke godkjent (B-05).
 - Ikke bygget: OIDC-adapter, databaseadapter, sletting og lagringsfrister, innsynsuttrekk, påminnelser, avslag og tilbaketrekking av overlevering, ruting og feilkø for inntak, historiske rapporter, administrasjon av kodeverk.
 - Ingen integrasjoner, utsendelser eller produksjonssetting er aktivert. Ingen helseopplysninger skal legges inn.
@@ -56,6 +60,7 @@ Nettlesertestene krever Playwright 1.62.1 og Chromium. Installer med `npm instal
 | Dokument | Innhold |
 |---|---|
 | [docs/decision-brief.md](docs/decision-brief.md) | Beslutningsgrunnlag B-01 til B-12 med anbefaling og e-post til beslutningseiere |
+| [docs/crm-features.md](docs/crm-features.md) | Sammenligning med andre CRM-systemer, hva som er lagt inn og hva som bør vente |
 | [docs/backlog.md](docs/backlog.md) | Faser, port før reelle data, beslutningsregister, risikoer |
 | [docs/backend-contract.md](docs/backend-contract.md) | Datamodell, validering, API-feil, endepunkter |
 | [docs/access-matrix.md](docs/access-matrix.md) | Roller, omfang, matrise og negative tester |

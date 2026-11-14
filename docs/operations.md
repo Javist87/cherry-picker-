@@ -11,7 +11,7 @@ Status 13. november 2026: Ingenting i dette dokumentet er satt i drift. Det finn
 | Frittstående prototype (`npm start`) | Vise arbeidsflyt | sessionStorage i fanen | Ingen. «Test som» er ikke sikkerhet | Fiktive | Finnes |
 | Utvikling (`npm run start:api`, profil `development`) | Utvikle og demonstrere server og tilgang | Minne, tapes ved omstart | Testbrukere uten passord | Fiktive | Finnes |
 | Test (profil `test`, `npm run test:api`) | Automatiske tester | Minne per test | Testbrukere | Fiktive | Finnes |
-| Produksjonslikt testmiljø | Kjøre N-01 til N-22, gjenoppretting og sletting mot valgt database og innlogging | Valgt database | Valgt identitetsløsning | Fiktive | Mangler. Krever B-01 til B-03 |
+| Produksjonslikt testmiljø | Kjøre N-01 til N-23, gjenoppretting og sletting mot valgt database og innlogging | Valgt database | Valgt identitetsløsning | Fiktive | Mangler. Krever B-01 til B-03 |
 | Produksjon (profil `production`) | Reell bruk | Valgt database | Valgt identitetsløsning | Reelle, etter porten | Mangler. Serveren nekter å starte |
 
 Utviklings- og testprofilen binder alltid til `127.0.0.1`. Produksjonsprofilen godtar ikke utviklingsadaptere, og det finnes ingen andre adaptere. Dette er testet i `test/api/contract-http.test.mjs`.
@@ -122,7 +122,7 @@ Listen speiler porten i [backlog.md](backlog.md). Ingen punkter er kvittert. «T
 | 2 | Behov for personvernkonsekvensvurdering er vurdert | Ikke oppfylt | Risiko R-01 beskrevet | Vurderingen | B-04 |
 | 3 | Driftsmiljø godkjent, databehandleravtaler på plass | Ikke oppfylt | Leverandørnøytral server | Valg, avtaler, utrulling | B-01 |
 | 4 | Jobbinnlogging i bruk, «Test som» fjernet fra produksjonsbygget | Ikke oppfylt. Teknisk forberedt | Identitetsport. Testinnlogging sperret i produksjonsprofil | OIDC-adapter, tenant, grupper. Frittstående prototype må ikke rulles ut | B-02 |
-| 5 | N-01 til N-22 består mot produksjonslikt miljø | Ikke oppfylt. Teknisk forberedt | 22 av 22 består mot API-et med utviklingsadaptere | Kjøring mot valgt database og innlogging. Svartid i N-02 er ikke målt | B-01–B-03, B-05 |
+| 5 | N-01 til N-23 består mot produksjonslikt miljø | Ikke oppfylt. Teknisk forberedt | 23 av 23 består mot API-et med utviklingsadaptere | Kjøring mot valgt database og innlogging. Svartid i N-02 er ikke målt | B-01–B-03, B-05 |
 | 6 | Revisjonslogg er på og kan ikke endres via applikasjonen | Ikke oppfylt. Teknisk forberedt | Logg som bare kan legges til, testet i N-20 | Varig lagring, databasekonto uten endringsrett på loggen, oppbevaringstid | B-03, B-10 |
 | 7 | Sikkerhetskopi er gjenopprettet i test | Ikke oppfylt | Prosedyre i kapittel 4 | Database, sikkerhetskopi, gjennomført test | B-01, B-03 |
 | 8 | Lagringstid og sletting er besluttet og testet | Ikke oppfylt | Tabell over kategorier i kapittel 6 | Frister, slettejobb, test | B-10 |

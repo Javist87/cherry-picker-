@@ -55,6 +55,7 @@ En bruker kan ha flere roller. Effektiv tilgang er summen av rollene, aldri mer.
 | `handoff.request` | eier | team | avdeling | — | — | — | — |
 | `handoff.confirm` | mottaker | mottaker | mottaker | — | — | — | — |
 | `case.reassign` | — | team | avdeling | — | — | — | — |
+| `activity.create` | eier | team | avdeling | — | — | — | — |
 | `case.export` | — | — | avdeling | — | — | — | — |
 | `report.aggregate` | — | team | avdeling | alle | — | — | — |
 | `audit.read` | — | — | — | — | — | alle | — |
@@ -67,6 +68,7 @@ Hva operasjonene dekker:
 
 - `case.read` gjelder også sakens Person, Contact, Relationship, Action, Handoff og sakshistorikk. Det finnes ingen egen vei til person- eller kontaktdata utenom en sak brukeren har innsyn i.
 - `case.search` gjelder liste, søk, filtre og egen arbeidsdag. Treff og antall beregnes bare av saker i omfanget.
+- `activity.create` er logging av gjennomført kontakt eller notat på saken. Raden er lagt til 14. november 2026 med samme omfang som `case.update`. Aktiviteter leses som del av saken (`case.read`).
 - `case.reassign` er eierskifte uten mottaksbekreftelse, for eksempel ved fravær. Det er holdt adskilt fra overlevering, som krever bekreftelse.
 - `report.aggregate` gir antall per gruppe. Se regler under.
 - `admin.config` gir ikke adgang til å tildele seg selv saksroller, se beslutning B-12.
@@ -85,6 +87,8 @@ Hva operasjonene dekker:
 ## Særregler
 
 **Overlevering.** Ventende mottaker får lesetilgang til saken for å kunne vurdere den, og kan bekrefte. Mottakeren kan ikke endre saken før ansvaret er flyttet. Tidligere eier mister tilgang som `tildelt` når overleveringen er bekreftet, og beholder bare det team- eller avdelingsrollen gir.
+
+**Aktivitetslogg.** Aktiviteter kan bare legges til. Ventende mottaker kan lese loggen, men ikke logge før ansvaret er flyttet. Notatteksten skrives ikke til revisjonsloggen. Om selger som er ansvarlig for åpen handling uten å eie saken også skal kunne logge er ikke avklart, se B-05.
 
 **Aggregater.** Svaret inneholder bare gruppe og antall, aldri saks-, person- eller kontaktidentitet. Tillatte grupperinger er status, BPA-prosess, kilde, kommune, avdeling og team. Gruppering på ansvarlig er ikke tillatt i forslaget, fordi det er resultatmåling av ansatte og bør besluttes særskilt. Grupper med færre enn fem saker undertrykkes. Terskelen er et forslag, se B-06.
 
@@ -124,6 +128,7 @@ Testene under skal bestå mot et produksjonslikt miljø før pilot med reelle da
 | N-20 | Revisjonslogg | Hvert avslag og hver eksport gir AuditEvent. Loggen kan ikke endres eller slettes via API. | Nei | Ja | Testet mot lagring i minnet. Varig lagring og databaserettigheter gjenstår (B-03). |
 | N-21 | Sesjon | Endret rolle eller tilhørighet får virkning uten ny innlogging innen avtalt tid. Utløpt sesjon gir 401. | Nei | Ja | Bare mot testinnlogging, der endring virker umiddelbart. Må kjøres på nytt mot valgt identitetsløsning (B-02). |
 | N-22 | Dublett | Dublettsvar avslører ikke opplysninger om saker utenfor omfanget. | Nei | Ja | Svaret sier at det finnes et mulig treff utenfor omfanget. Om det er akseptabelt må besluttes (B-09). |
+| N-23 | Aktivitet | Selger får 404 ved logging på sak selgeren ikke har innsyn i. Ventende mottaker får 403. Roller uten saksinnsyn får 403. Avslag loggføres uten notattekst. | Nei | Ja | `test/api/activities.test.mjs`. Lagt til 14. november 2026. |
 
 ## Åpne spørsmål i matrisen
 

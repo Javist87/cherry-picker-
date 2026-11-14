@@ -5,10 +5,13 @@ const LABELS = {
   status: { new: 'Ny', dialog: 'Dialog', on_hold: 'Avventer', handover: 'Oppstartsoverlevering', closed: 'Avsluttet' },
   bpa: { unclear: 'Uavklart', application: 'Søknad', awaiting_decision: 'Venter på vedtak', decision_made: 'Vedtak foreligger', provider_change: 'Leverandørbytte' },
   source: { website: 'Nettside', email: 'E-post', phone: 'Telefon', fair: 'Messe', referral: 'Anbefaling' },
+  activityType: { call: 'Telefon', meeting: 'Møte', email: 'E-post', sms: 'SMS', note: 'Notat' },
+  activityOutcome: { reached: 'Fikk kontakt', no_answer: 'Ikke svar', message_left: 'La igjen beskjed', meeting_booked: 'Møte avtalt' },
+  closeOutcome: { won: 'Vunnet – oppstart', lost_other_provider: 'Tapt – valgte annen leverandør', lost_not_relevant: 'Tapt – ikke aktuelt lenger', lost_no_response: 'Tapt – ingen respons', invalid: 'Feilregistrert eller dublett', other: 'Annet' },
   handoff: { pending: 'Venter på bekreftelse', confirmed: 'Bekreftet', cancelled: 'Trukket', declined: 'Avslått' },
 };
-const FIELD_LABELS = { name: 'Saksnavn', municipality: 'Kommune', department: 'Avdeling', team: 'Team', ownerId: 'Ansvarlig', status: 'Kontaktløp', bpa: 'BPA-prosess', source: 'Kilde', reason: 'Årsak', agreementDate: 'Avtale inngått', startDate: 'Faktisk oppstart', 'action.dueDate': 'Frist', 'action.assigneeId': 'Ansvarlig for handling', 'contact.email': 'E-post', 'contact.displayName': 'Kontaktperson', toUserId: 'Mottaker', next: 'Neste steg' };
-const EVENT_TEXT = { 'case.create': 'Henvendelse registrert', 'case.update': 'Sak oppdatert', 'action.complete': 'Oppfølging fullført, nytt steg avtalt', 'handoff.request': 'Overlevering forespurt', 'handoff.confirm': 'Overlevering bekreftet', 'case.reassign': 'Eierskifte gjennomført' };
+const FIELD_LABELS = { name: 'Saksnavn', municipality: 'Kommune', department: 'Avdeling', team: 'Team', ownerId: 'Ansvarlig', status: 'Kontaktløp', bpa: 'BPA-prosess', source: 'Kilde', reason: 'Årsak', closeOutcome: 'Utfall ved avslutning', type: 'Aktivitetstype', outcome: 'Utfall', note: 'Notat', agreementDate: 'Avtale inngått', startDate: 'Faktisk oppstart', 'action.dueDate': 'Frist', 'action.assigneeId': 'Ansvarlig for handling', 'contact.email': 'E-post', 'contact.displayName': 'Kontaktperson', toUserId: 'Mottaker', next: 'Neste steg' };
+const EVENT_TEXT = { 'case.create': 'Henvendelse registrert', 'case.update': 'Sak oppdatert', 'action.complete': 'Oppfølging fullført, nytt steg avtalt', 'handoff.request': 'Overlevering forespurt', 'handoff.confirm': 'Overlevering bekreftet', 'case.reassign': 'Eierskifte gjennomført', 'activity.create': 'Aktivitet logget' };
 const code = (kind, label) => Object.entries(LABELS[kind]).find(([, text]) => text === label)?.[0] ?? label;
 const osloDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Oslo' });
 
@@ -48,7 +51,9 @@ function flatten(c) {
     status: LABELS.status[c.status] || c.status, bpa: LABELS.bpa[c.bpa] || c.bpa, source: LABELS.source[c.source] || c.source,
     contact: contact?.displayName || '', email: contact?.email || '', phone: contact?.phone || '',
     nextAction: c.openAction?.description || '', due: c.openAction?.dueDate || '',
-    reason: c.reason || '', agreementDate: c.agreementDate || '', startDate: c.startDate || '',
+    reason: c.reason || '', closeOutcome: LABELS.closeOutcome[c.closeOutcome] || '',
+    activities: (c.activities || []).map(a => ({ id: a.id, type: LABELS.activityType[a.type] || a.type, outcome: LABELS.activityOutcome[a.outcome] || '', note: a.note || '', by: a.by, at: a.at })),
+    agreementDate: c.agreementDate || '', startDate: c.startDate || '',
     createdAt: osloDate.format(new Date(c.createdAt)),
     handoff: h ? { from: h.fromUserId, to: h.toUserId, state: LABELS.handoff[h.state] || h.state } : null,
     completedActions: c.completedActions,
@@ -79,7 +84,7 @@ export function createApiSource() {
       return {
         actor: me.user.id, users, actors: actors.length ? actors : [{ id: me.user.id, name: me.user.displayName }],
         org: { departments: me.codebook.departments, defaults: { department: me.user.departments[0] || '', team: me.user.teams[0] || '' } },
-        caps: { cases: can('case.search'), create: can('case.create'), aggregate: can('report.aggregate') },
+        caps: { cases: can('case.search'), create: can('case.create'), aggregate: can('report.aggregate'), activity: can('activity.create') },
         texts: {
           saved: 'Saken er lagret på serveren.',
           handoffSent: 'Overlevering sendt. Ansvar flyttes når mottaker bekrefter.',
@@ -115,6 +120,7 @@ export function createApiSource() {
         status: code('status', d.status), bpa: code('bpa', d.bpa), source: code('source', d.source),
         reason: d.reason || '', agreementDate: d.agreementDate || '', startDate: d.startDate || '',
       };
+      if (existing || d.closeOutcome) body.closeOutcome = d.closeOutcome ? code('closeOutcome', d.closeOutcome) : '';
       if (d.contact || d.email || d.phone || existing?.contact) body.contact = { displayName: d.contact || 'Ikke oppgitt', email: d.email || '', phone: d.phone || '' };
       if (body.status !== 'closed') body.action = { description: d.nextAction || '', dueDate: d.due || '' };
       if (existing) await call('PATCH', '/cases/' + d.id, { body, ifMatch: existing._etag });
@@ -123,6 +129,11 @@ export function createApiSource() {
     async completeFollowup(id, { nextAction, due }) {
       const c = find(id);
       await call('POST', `/cases/${id}/actions/${c._actionId}/complete`, { body: { next: { description: nextAction, dueDate: due } }, ifMatch: c._etag });
+    },
+    async logActivity(id, { type, outcome, note }) {
+      const body = { type: code('activityType', type), note: note || '' };
+      if (outcome) body.outcome = code('activityOutcome', outcome);
+      await call('POST', `/cases/${id}/activities`, { body, ifMatch: find(id)._etag });
     },
     async requestHandoff(id, recipient) { await call('POST', `/cases/${id}/handoffs`, { body: { toUserId: recipient }, ifMatch: find(id)._etag }); },
     async acceptHandoff(id) { const c = find(id); await call('POST', `/cases/${id}/handoffs/${c._handoffId}/confirm`, { body: {}, ifMatch: c._etag }); },

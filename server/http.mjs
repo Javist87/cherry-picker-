@@ -24,6 +24,7 @@ function routes(service) {
     ['POST', '/cases/:caseId/actions/:actionId/complete', 'action.complete', r => service.completeAction(r.ctx, r.params.caseId, r.params.actionId, r.ifMatch, r.body).then(ok)],
     ['POST', '/cases/:caseId/handoffs', 'handoff.request', r => service.requestHandoff(r.ctx, r.params.caseId, r.ifMatch, r.body).then(result => ok(result, 201))],
     ['POST', '/cases/:caseId/handoffs/:handoffId/confirm', 'handoff.confirm', r => service.confirmHandoff(r.ctx, r.params.caseId, r.params.handoffId, r.ifMatch).then(ok)],
+    ['POST', '/cases/:caseId/activities', 'activity.create', r => service.logActivity(r.ctx, r.params.caseId, r.ifMatch, r.body).then(result => ok(result, 201))],
     ['POST', '/cases/:caseId/reassign', 'case.reassign', r => service.reassignCase(r.ctx, r.params.caseId, r.ifMatch, r.body).then(ok)],
     ['GET', '/cases/:caseId/events', 'case.read', r => service.caseEvents(r.ctx, r.params.caseId).then(ok)],
     ['GET', '/reports/aggregate', 'report.aggregate', r => service.aggregate(r.ctx, r.query).then(ok)],

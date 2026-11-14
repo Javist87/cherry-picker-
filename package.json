@@ -8,10 +8,12 @@
     "start": "node server.mjs",
     "start:api": "node server/main.mjs",
     "test": "node --test test/domain.test.mjs",
+    "test:crm": "node --test test/crm.test.mjs",
     "test:contract": "node --test test/contract.test.mjs",
     "test:api": "node --test test/api/*.test.mjs",
     "test:browser": "node test/browser.mjs",
+    "test:browser:crm": "node test/browser-crm.mjs",
     "test:browser:api": "node test/browser-api.mjs",
-    "test:all": "npm test && npm run test:contract && npm run test:api"
+    "test:all": "npm test && npm run test:crm && npm run test:contract && npm run test:api"
   }
 }

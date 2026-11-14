@@ -30,6 +30,7 @@ Prototypen har ett flatt sakskort. Kontrakten deler det i sju ressurser, slik ar
 Person 1 ── * Relationship * ── 1 Contact
 Person 1 ── * SalesCase 1 ── * Action
                           1 ── * Handoff
+                          1 ── * Activity
                           1 ── * AuditEvent
 ```
 
@@ -78,6 +79,7 @@ Kobler Contact til Person.
 | `reason` | tekst | Påkrevd når `status` er `on_hold` eller `closed` |
 | `agreementDate` | dato | Valgfri. Krever ikke ordningsnummer |
 | `startDate` | dato | Valgfri. Se regler under |
+| `closeOutcome` | kode | Valgfri. Bare på avsluttet sak. Nullstilles av server når saken åpnes igjen |
 | `closedAt` | tidspunkt | Satt av server ved avslutning |
 
 Neste handling og frist er ikke felt på saken. De ligger i sakens åpne Action.
@@ -87,6 +89,9 @@ Neste handling og frist er ikke felt på saken. De ligger i sakens åpne Action.
 | `status` | `new` Ny · `dialog` Dialog · `on_hold` Avventer · `handover` Oppstartsoverlevering · `closed` Avsluttet |
 | `bpa` | `unclear` Uavklart · `application` Søknad · `awaiting_decision` Venter på vedtak · `decision_made` Vedtak foreligger · `provider_change` Leverandørbytte |
 | `source` | `website` Nettside · `email` E-post · `phone` Telefon · `fair` Messe · `referral` Anbefaling |
+| `closeOutcome` | `won` Vunnet – oppstart · `lost_other_provider` Tapt – valgte annen leverandør · `lost_not_relevant` Tapt – ikke aktuelt lenger · `lost_no_response` Tapt – ingen respons · `invalid` Feilregistrert eller dublett · `other` Annet |
+| `activityType` | `call` Telefon · `meeting` Møte · `email` E-post · `sms` SMS · `note` Notat |
+| `activityOutcome` | `reached` Fikk kontakt · `no_answer` Ikke svar · `message_left` La igjen beskjed · `meeting_booked` Møte avtalt |
 
 Stabile koder i stedet for visningstekst er et forslag, se B-07.
 
@@ -107,6 +112,18 @@ Stabile koder i stedet for visningstekst er et forslag, se B-07.
 | `caseId`, `fromUserId`, `toUserId` | UUID | Påkrevd. Mottaker kan ikke være nåværende eier |
 | `state` | kode | `pending`, `confirmed`. Forslag til utvidelse: `declined`, `cancelled`, se B-08 |
 | `requestedAt`, `decidedAt` | tidspunkt | Settes av server |
+
+### Activity
+
+Gjennomført kontakt eller notat på en sak. Lagt til 14. november 2026, se [crm-features.md](crm-features.md). Kan bare legges til. Det finnes ingen rute for endring eller sletting.
+
+| Felt | Type | Regel |
+|---|---|---|
+| `caseId` | UUID | Påkrevd |
+| `type` | kode | Påkrevd. Se kodeverk `activityType` |
+| `outcome` | kode | Påkrevd for alle typer unntatt `note`. Ikke tillatt for `note` |
+| `note` | tekst | Valgfri, inntil 200 tegn. Påkrevd for `note`. Fritekst: skrives aldri til revisjonsloggen. Om feltet skal finnes med reelle data er åpent, se B-04 og B-10 |
+| `at`, `by` | tidspunkt, UUID | Settes av server |
 
 ### AuditEvent
 Ligger på server, kan bare legges til, og kan ikke endres eller slettes via API.
@@ -145,6 +162,8 @@ Reglene i prototypen videreføres på server. Kolonnen «Kilde» viser hvor rege
 | V-12 | Saken kan bare ha én ventende overlevering | `handoff_pending` | `requestHandoff` |
 | V-13 | Eier flyttes først når mottaker bekrefter | – | `acceptHandoff` |
 | V-14 | Mulig dublett på normalisert e-post, telefon eller saksnavn og kommune | `possible_duplicate` | `duplicates` |
+| V-15 | `closeOutcome` må være gyldig kode og kan bare settes når `status` er `closed` | `invalid_enum`, `not_applicable` | `validateCloseOutcome` i `crm.mjs` |
+| V-16 | Aktivitet krever gyldig type. Utfall kreves for alt unntatt notat, og notat krever tekst. Avsluttet sak kan ikke få aktivitet | `required`, `invalid_enum`, `not_applicable`, `case_closed` | `logActivity` i `crm.mjs` |
 
 Nytt i forhold til prototypen:
 
@@ -212,11 +231,12 @@ Oversikten viser omfanget, ikke endelig utforming.
 | `GET /users` | `directory.read` | Kolleger med saksrolle i egne avdelinger, for valg av ansvarlig og mottaker |
 | `GET /cases` | `case.search` | Søk (`q`), filtre (`status`, `bpa`, `source`, `ownerId`), sideinndeling med `limit` og `cursor`. Bare saker i omfanget |
 | `POST /cases` | `case.create` | Oppretter sak med første Action i samme kall |
-| `GET /cases/{id}` | `case.read` | Med Person, kontakter, åpen Action og ventende Handoff |
+| `GET /cases/{id}` | `case.read` | Med Person, kontakter, åpen Action, ventende Handoff og aktiviteter |
 | `PATCH /cases/{id}` | `case.update` | Delvis oppdatering. Krever `If-Match` |
 | `POST /cases/{id}/actions/{actionId}/complete` | `action.complete` | Krever neste handling, ansvarlig og frist |
 | `POST /cases/{id}/handoffs` | `handoff.request` | |
 | `POST /cases/{id}/handoffs/{handoffId}/confirm` | `handoff.confirm` | Flytter eier |
+| `POST /cases/{id}/activities` | `activity.create` | Logger aktivitet. Krever `If-Match` og øker sakens revisjon. Svarer 201 med saken |
 | `POST /cases/{id}/reassign` | `case.reassign` | Eierskifte uten bekreftelse. Krever begrunnelse |
 | `GET /cases/{id}/events` | `case.read` | Sakshistorikk |
 | `GET /reports/aggregate` | `report.aggregate` | `from`, `to`, `groupBy`. Bare antall |
@@ -237,6 +257,8 @@ Valg gjort under bygging, som må bekreftes:
 - Bare teamleder og avdelingsleder kan sende `confirmNotDuplicate: true` (B-09).
 - Aggregater filtreres på opprettelsesdato og returnerer ingen totalsum (B-06).
 - Frist må være i dag eller senere når en handling opprettes eller fristen endres. Uendret, forfalt frist hindrer ikke annen lagring.
+- Aktivitet får tidspunktet den logges. Tilbakedatering er ikke mulig. Logging øker sakens revisjon, slik at en samtidig redigering får 412 og må lese saken på nytt.
+- `closeOutcome` er valgfritt. Om det skal være påkrevd ved avslutning avgjøres når kodeverket er bekreftet (fase 1).
 
 ## 7. Idempotent inntak
 
@@ -264,6 +286,6 @@ Hvor lenge nøkler oppbevares er ikke besluttet. Det må være lenger enn avsend
 
 ## 9. Fra kontrakttest til backendtest
 
-`test/contract.test.mjs` kjører mot referansemodellen. `test/api/` kjører de samme tilfellene og N-19 til N-22 mot API-et over HTTP med testbrukere per rolle (`npm run test:api`, 48 tester). En egen test sammenligner serverens tilgangsavgjørelse med referansemodellen for alle roller, operasjoner og saksforhold.
+`test/contract.test.mjs` kjører mot referansemodellen. `test/api/` kjører de samme tilfellene og N-19 til N-23 mot API-et over HTTP med testbrukere per rolle (`npm run test:api`, 57 tester). En egen test sammenligner serverens tilgangsavgjørelse med referansemodellen for alle roller, operasjoner og saksforhold.
 
 Testene beviser at API-et følger reglene med utviklingsadaptere. De beviser ikke at en databaseadapter eller en OIDC-adapter gjør det. Når slike adaptere finnes, skal `test/api/` kjøres mot dem i et produksjonslikt miljø før porten kan kvitteres.
