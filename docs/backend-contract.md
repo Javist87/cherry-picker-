@@ -208,7 +208,7 @@ Oversikten viser omfanget, ikke endelig utforming.
 
 | Metode og sti | Operasjon | Merknad |
 |---|---|---|
-| `GET /me` | – | Innlogget bruker, tildelte operasjoner og kodeverk. Krever bare sesjon |
+| `GET /me` | – | Innlogget bruker, tildelte operasjoner, omfang per operasjon (`access`) og kodeverk. Krever bare sesjon |
 | `GET /users` | `directory.read` | Kolleger med saksrolle i egne avdelinger, for valg av ansvarlig og mottaker |
 | `GET /cases` | `case.search` | Søk (`q`), filtre (`status`, `bpa`, `source`, `ownerId`), sideinndeling med `limit` og `cursor`. Bare saker i omfanget |
 | `POST /cases` | `case.create` | Oppretter sak med første Action i samme kall |
@@ -222,7 +222,7 @@ Oversikten viser omfanget, ikke endelig utforming.
 | `GET /reports/aggregate` | `report.aggregate` | `from`, `to`, `groupBy`. Bare antall |
 | `POST /exports` | `case.export` | Krever `purpose` |
 | `GET /audit-events` | `audit.read` | Filtre `caseId`, `actorId`, `operation`, `outcome` |
-| `GET /admin/config` | `admin.config` | Teknisk oppsett uten saks- eller persondata. Endring av kodeverk er ikke bygget |
+| `GET /admin/config` | `admin.config` | Teknisk oppsett uten saks- eller persondata. Inntakskø vises som antall og eldste tidspunkt per tilstand. Endring av kodeverk er ikke bygget |
 | `POST /intake/web-form` | `intake.submit` | Se under |
 
 Person, Contact og Relationship opprettes og endres under saken de tilhører, og følger sakens tilgang. Det finnes ingen ruter som `/persons/{id}` eller `/contacts/{id}`.

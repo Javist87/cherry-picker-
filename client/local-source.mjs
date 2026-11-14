@@ -30,7 +30,7 @@ export function createLocalSource() {
     async setActor(id) { actor = id; },
     async list() { return cases; },
     async history(id) { return cases.find(c => c.id === id)?.history || []; },
-    async save(draft) {
+    async save({ etag, confirmNotDuplicate, ...draft }) {
       const dup = duplicates(draft, cases);
       if (dup.length) throw new Error('Mulig dublett: ' + dup.map(x => x.name).join(', ') + '. Kontroller eksisterende sak eller bruk et annet fiktivt eksempel.');
       commit(saveCase(draft, cases));

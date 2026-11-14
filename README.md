@@ -1,6 +1,6 @@
 # Cherry Picker – Medvind salgsverktøy
 
-Intern salgsarbeidsflate. Versjon 0.2 består av en frittstående prototype og en API-server med tilgangsstyring som bare kjører med utviklingsadaptere. Bare fiktive data.
+Intern salgsarbeidsflate. Versjon 0.3 består av en frittstående prototype og en API-server med tilgangsstyring som bare kjører med utviklingsadaptere. Bare fiktive data.
 
 **Ikke klar for produksjon eller reelle personopplysninger.** «Port før reelle data» i [docs/backlog.md](docs/backlog.md) er ikke passert, og ingen av beslutningene B-01 til B-12 er tatt. Se [docs/decision-brief.md](docs/decision-brief.md).
 
@@ -11,7 +11,9 @@ Krever Node.js 22 eller nyere. Ingen pakkeinstallasjon og ingen avhengigheter.
 | Kommando | Hva den starter | Data | Innlogging |
 |---|---|---|---|
 | `npm start` | Frittstående prototype på http://127.0.0.1:3000 | sessionStorage i fanen | Ingen. «Test som» er ikke sikkerhet |
-| `npm run start:api` | API og klient på http://127.0.0.1:3000 | Serverens minne, tapes ved omstart | Testbrukere uten passord. Bare utvikling |
+| `npm run demo` (samme som `npm run start:api`) | Demoversjon med alle roller: API og klient på http://127.0.0.1:3000 | Serverens minne, tapes ved omstart | Testbrukere uten passord. Bare utvikling |
+
+Demoen viser alle funksjonene per rolle, fra superbruker og leder til selger, revisor, teknisk administrator og inntakstjeneste. Se [docs/demo-guide.md](docs/demo-guide.md) for testbrukere og forslag til gjennomgang.
 
 Prototypen kan også legges på en vanlig statisk webserver sammen med mappen `client/`. Den bruker relative ressurslenker.
 
@@ -22,7 +24,7 @@ API-serveren nekter å starte med `APP_PROFILE=production`. Det finnes ingen ada
 ```sh
 npm test                  # 12 regeltester for prototypen (domain.mjs)
 npm run test:contract     # 20 kontrakttester mot referansemodellen
-npm run test:api          # 48 tester mot API-et over HTTP, blant dem N-01 til N-22
+npm run test:api          # 50 tester mot API-et over HTTP, blant dem N-01 til N-22
 npm run test:all          # de tre over
 npm run test:browser      # nettlesertest av prototypen, krever npm start
 npm run test:browser:api  # nettlesertest i API-modus, krever npm run start:api
@@ -41,7 +43,7 @@ Nettlesertestene krever Playwright 1.62.1 og Chromium. Installer med `npm instal
 - Revisjonslogg som bare kan legges til. Den inneholder feltnavn, ikke feltverdier eller søketekst.
 - Lagring og identitet ligger bak porter (`server/ports.mjs`). Eneste adaptere er `dev-memory` og `dev`, tydelig merket og sperret i produksjonsprofil.
 
-**Klient:** `app.mjs` bruker en datakilde (`client/`). `local` er prototypen. `api` bruker serveren og skriver ingenting til nettleserlagring.
+**Klient:** `app.mjs` bruker en datakilde (`client/`). `local` er prototypen. `api` bruker serveren og skriver ingenting til nettleserlagring. I API-modus finnes også visninger for egen tilgang, eierskifte, eksport, aggregater, revisjonslogg, teknisk oppsett og simulert nettskjema.
 
 ## Begrensninger
 
@@ -55,6 +57,7 @@ Nettlesertestene krever Playwright 1.62.1 og Chromium. Installer med `npm instal
 
 | Dokument | Innhold |
 |---|---|
+| [docs/demo-guide.md](docs/demo-guide.md) | Testbrukere og gjennomgang av demoversjonen |
 | [docs/decision-brief.md](docs/decision-brief.md) | Beslutningsgrunnlag B-01 til B-12 med anbefaling og e-post til beslutningseiere |
 | [docs/backlog.md](docs/backlog.md) | Faser, port før reelle data, beslutningsregister, risikoer |
 | [docs/backend-contract.md](docs/backend-contract.md) | Datamodell, validering, API-feil, endepunkter |
